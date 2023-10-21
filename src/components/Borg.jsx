@@ -6,24 +6,23 @@ export default function Borg() {
   const [currBorg, setCurrBorg] = useState("Click the button!");
   const [mio, setMio] = useState("Click the button!");
   useEffect(() => {}, []);
-  function borg(type) {
-    if (type === "borg") {
-      let array = data.borgs;
-      var copy = array.slice(0);
-      if (copy.length < 1) copy = array.slice(0);
-      var index = Math.floor(Math.random() * copy.length);
-      var item = copy[index];
-      copy.splice(index, 1);
-      setCurrBorg(item);
-    } else {
-      let array = data.mio;
-      var copy = array.slice(0);
-      if (copy.length < 1) copy = array.slice(0);
-      var index = Math.floor(Math.random() * copy.length);
-      var item = copy[index];
-      copy.splice(index, 1);
-      setMio(item);
-    }
+  function borg() {
+    let array = data.borgs;
+    var copy = array.slice(0);
+    if (copy.length < 1) copy = array.slice(0);
+    var index = Math.floor(Math.random() * copy.length);
+    var item = copy[index];
+    copy.splice(index, 1);
+    setCurrBorg(item);
+  }
+  function m() {
+    let array = data.mio;
+    var copy = array.slice(0);
+    if (copy.length < 1) copy = array.slice(0);
+    var index = Math.floor(Math.random() * copy.length);
+    var item = copy[index];
+    copy.splice(index, 1);
+    setMio(item);
   }
   return (
     <div id="borg">
@@ -31,11 +30,7 @@ export default function Borg() {
         <h1>Let's borg.</h1>
         <p>Please drink responsibly.</p>
         <div className="c-container">
-          <button
-            className="borg-button"
-            id="borg-button"
-            onClick={borg('borg')}
-          >
+          <button className="borg-button" id="borg-button" onClick={borg}>
             BORG!
           </button>
           <div className="borg-box">
@@ -45,10 +40,7 @@ export default function Borg() {
           </div>
         </div>
         <div className="c-container">
-          <button 
-          className="mio-button" 
-          id="mio-button"
-          onClick={borg('mio')}>
+          <button className="mio-button" id="mio-button" onClick={m}>
             MIO
           </button>
           <div className="borg-box">
