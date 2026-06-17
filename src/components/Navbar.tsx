@@ -1,8 +1,9 @@
-import { useRef } from "react";
-import { Link } from "react-router-dom";
+import { useRef, type MouseEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import ThemeToggle from "./ThemeToggle";
+import { scrollToSection } from "../lib/scrollToSection";
 
 const links = [
   { href: "/#hero", label: "Home" },
@@ -14,6 +15,35 @@ const links = [
 
 export default function Navbar() {
   const navRef = useRef<HTMLElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSectionClick = (
+    e: MouseEvent<HTMLAnchorElement>,
+    href: string
+  ) => {
+    const hash = href.includes("#") ? href.slice(href.indexOf("#")) : "";
+
+    if (!hash) return;
+
+    e.preventDefault();
+
+    if (location.pathname !== "/") {
+      navigate({ pathname: "/", hash: hash.slice(1) });
+      return;
+    }
+
+    scrollToSection(hash);
+    window.history.replaceState(null, "", hash);
+  };
+
+  const handleHomeClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (location.pathname !== "/") return;
+
+    e.preventDefault();
+    scrollToSection("#hero");
+    window.history.replaceState(null, "", "/");
+  };
 
   useGSAP(
     () => {
@@ -39,6 +69,7 @@ export default function Navbar() {
       <nav className="glass flex items-center justify-between gap-3 rounded-2xl px-4 py-3 md:px-6">
         <Link
           to="/"
+          onClick={handleHomeClick}
           className="nav-item text-lg font-semibold tracking-tight text-foreground transition-colors hover:text-cyan"
         >
           borg<span className="text-cyan">with</span>us
@@ -48,6 +79,7 @@ export default function Navbar() {
             <li key={link.href}>
               <Link
                 to={link.href}
+                onClick={(e) => handleSectionClick(e, link.href)}
                 className="nav-item cursor-pointer rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-hover hover:text-foreground"
               >
                 {link.label}

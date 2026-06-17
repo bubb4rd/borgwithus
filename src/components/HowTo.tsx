@@ -13,7 +13,7 @@ const steps = [
     id: 2,
     title: "Add vodka",
     subtitle:
-      "Pour in a small handle of Tito's (750 mL) or a vodka of your choice.",
+      "Pour in a small handle (750 mL) of a vodka of your choice.",
   },
   {
     id: 3,

@@ -5,8 +5,10 @@ import Hero from "../components/Hero";
 import HowTo from "../components/HowTo";
 import About from "../components/About";
 import Generator from "../components/Generator";
+import Leaderboard from "../components/Leaderboard";
 import Contact from "../components/Contact";
 import Footer from "../components/Footer";
+import HashScroll from "../components/HashScroll";
 import ScrollToTop from "../components/ScrollToTop";
 import { useGSAP } from "@gsap/react";
 
@@ -38,11 +40,13 @@ export default function HomePage() {
       className="site-bg relative min-h-screen overflow-x-hidden"
     >
       <Navbar />
+      <HashScroll />
       <main>
         <Hero />
         <HowTo />
         <About />
         <Generator />
+        <Leaderboard />
         <Contact />
       </main>
       <Footer />

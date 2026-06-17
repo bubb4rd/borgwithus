@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
+import { scrollToSection } from "../lib/scrollToSection";
 
 const entrance = {
   autoAlpha: 0,
@@ -28,14 +29,6 @@ export default function Hero() {
     },
     { scope: sectionRef }
   );
-
-  const scrollTo = (id: string) => {
-    gsap.to(window, {
-      duration: 1,
-      scrollTo: id,
-      ease: "power3.inOut",
-    });
-  };
 
   return (
     <section
@@ -70,14 +63,14 @@ export default function Hero() {
           </p>
           <div className="hero-cta-row mt-10 flex items-center gap-3 sm:gap-4">
             <Link
-              to="/login?tab=signup"
+              to="/signup"
               className="hero-btn hero-btn-text border-transparent bg-gradient-to-r from-cyan to-sky-400 font-semibold text-on-accent transition-opacity hover:opacity-90"
             >
               Sign up
             </Link>
             <button
               type="button"
-              onClick={() => scrollTo("#generator")}
+              onClick={() => scrollToSection("#generator")}
               className="hero-btn hero-btn-text glass font-semibold text-foreground transition-colors hover:border-cyan/40 hover:bg-hover"
             >
               Let&apos;s BORG
