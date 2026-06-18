@@ -1,13 +1,17 @@
-import { getRecentRolls, getSavedPicks } from "./userData";
+import { getRecentRolls, getSavedLikes } from "./userData";
 
-const PICKS_KEY = "borgwithus-picks";
+const LIKES_KEY = "borgwithus-likes";
+const LEGACY_PICKS_KEY = "borgwithus-picks";
 
-export function getUserPickCount(): number {
+export function getUserLikeCount(): number {
   try {
-    const raw = localStorage.getItem(PICKS_KEY);
+    let raw = localStorage.getItem(LIKES_KEY);
+    if (!raw) {
+      raw = localStorage.getItem(LEGACY_PICKS_KEY);
+    }
     if (!raw) return 0;
-    const picks = JSON.parse(raw) as Record<string, number>;
-    return Object.values(picks).reduce((sum, n) => sum + n, 0);
+    const likes = JSON.parse(raw) as Record<string, number>;
+    return Object.values(likes).reduce((sum, n) => sum + n, 0);
   } catch {
     return 0;
   }
@@ -30,11 +34,11 @@ export function getInitials(name: string) {
 }
 
 export function getDashboardStats() {
-  const picks = getSavedPicks();
+  const likes = getSavedLikes();
   return {
-    savedPicks: picks.length,
-    communityPicks: getUserPickCount(),
+    savedLikes: likes.length,
+    likesCast: getUserLikeCount(),
     generations: getRecentRolls().length,
-    rated: picks.filter((p) => p.rating).length,
+    rated: likes.filter((like) => like.rating).length,
   };
 }

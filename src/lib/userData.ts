@@ -2,10 +2,18 @@ import { recordRating } from "./leaderboard";
 
 export type RollType = "borg" | "mio" | "ai";
 
-export type SavedPick = {
+export type SavedLike = {
   id: string;
   name: string;
-  pickedAt: string;
+  likedAt: string;
+  rating?: number;
+};
+
+type LegacySavedLike = {
+  id: string;
+  name: string;
+  pickedAt?: string;
+  likedAt?: string;
   rating?: number;
 };
 
@@ -16,7 +24,8 @@ export type RecentRoll = {
   rolledAt: string;
 };
 
-const SAVED_PICKS_KEY = "borgwithus-saved-picks";
+const SAVED_LIKES_KEY = "borgwithus-saved-likes";
+const LEGACY_SAVED_PICKS_KEY = "borgwithus-saved-picks";
 const RECENT_ROLLS_KEY = "borgwithus-recent-rolls";
 export const PREVIEW_LIMIT = 5;
 const MAX_STORED_ROLLS = 100;
@@ -39,35 +48,51 @@ function uid() {
   return crypto.randomUUID();
 }
 
-export function getSavedPicks(): SavedPick[] {
-  return loadJson<SavedPick[]>(SAVED_PICKS_KEY, []);
+function migrateSavedLikes(): SavedLike[] {
+  const legacy = loadJson<LegacySavedLike[]>(LEGACY_SAVED_PICKS_KEY, []);
+  if (legacy.length === 0) return [];
+
+  const migrated = legacy.map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    likedAt: entry.likedAt ?? entry.pickedAt ?? new Date().toISOString(),
+    rating: entry.rating,
+  }));
+  localStorage.setItem(SAVED_LIKES_KEY, JSON.stringify(migrated));
+  return migrated;
 }
 
-export function addSavedPick(name: string) {
-  const picks = getSavedPicks();
-  picks.unshift({
+export function getSavedLikes(): SavedLike[] {
+  const likes = loadJson<SavedLike[]>(SAVED_LIKES_KEY, []);
+  if (likes.length > 0) return likes;
+  return migrateSavedLikes();
+}
+
+export function addSavedLike(name: string) {
+  const likes = getSavedLikes();
+  likes.unshift({
     id: uid(),
     name,
-    pickedAt: new Date().toISOString(),
+    likedAt: new Date().toISOString(),
   });
-  localStorage.setItem(SAVED_PICKS_KEY, JSON.stringify(picks));
+  localStorage.setItem(SAVED_LIKES_KEY, JSON.stringify(likes));
   notify();
 }
 
-export function rateSavedPick(id: string, rating: number) {
-  const picks = getSavedPicks().map((pick) =>
-    pick.id === id ? { ...pick, rating } : pick
+export function rateSavedLike(id: string, rating: number) {
+  const likes = getSavedLikes().map((like) =>
+    like.id === id ? { ...like, rating } : like
   );
-  localStorage.setItem(SAVED_PICKS_KEY, JSON.stringify(picks));
+  localStorage.setItem(SAVED_LIKES_KEY, JSON.stringify(likes));
 
-  const pick = picks.find((p) => p.id === id);
-  if (pick) recordRating(pick.name, rating);
+  const like = likes.find((entry) => entry.id === id);
+  if (like) recordRating(like.name, rating);
   notify();
 }
 
-export function removeSavedPick(id: string) {
-  const picks = getSavedPicks().filter((pick) => pick.id !== id);
-  localStorage.setItem(SAVED_PICKS_KEY, JSON.stringify(picks));
+export function removeSavedLike(id: string) {
+  const likes = getSavedLikes().filter((like) => like.id !== id);
+  localStorage.setItem(SAVED_LIKES_KEY, JSON.stringify(likes));
   notify();
 }
 

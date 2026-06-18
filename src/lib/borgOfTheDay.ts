@@ -1,16 +1,17 @@
 import {
   getBorgOfTheDay,
   getDayKey,
-  getPickCount,
-  recordPick,
+  getLikeCount,
+  recordLike,
   recordRating,
 } from "./leaderboard";
-import { addSavedPick } from "./userData";
+import { addSavedLike } from "./userData";
 
 const BOTD_KEY = "borgwithus-botd";
 
 type BotdState = {
   day: string;
+  liked?: boolean;
   picked?: boolean;
   rating?: number;
 };
@@ -32,26 +33,32 @@ function saveState(state: BotdState) {
 function getTodayState(date = new Date()): BotdState {
   const day = getDayKey(date);
   const existing = loadState();
-  if (existing?.day === day) return existing;
+  if (existing?.day === day) {
+    return {
+      ...existing,
+      liked: existing.liked ?? existing.picked,
+    };
+  }
   return { day };
 }
 
-export function hasPickedBorgOfTheDay(date = new Date()) {
-  return getTodayState(date).picked === true;
+export function hasLikedBorgOfTheDay(date = new Date()) {
+  const state = getTodayState(date);
+  return state.liked === true;
 }
 
 export function getBorgOfTheDayRating(date = new Date()) {
   return getTodayState(date).rating ?? 0;
 }
 
-export function pickBorgOfTheDay(date = new Date()) {
+export function likeBorgOfTheDay(date = new Date()) {
   const state = getTodayState(date);
-  if (state.picked) return getBorgOfTheDay(date);
+  if (state.liked) return getBorgOfTheDay(date);
 
   const name = getBorgOfTheDay(date);
-  recordPick(name);
-  addSavedPick(name);
-  saveState({ ...state, picked: true });
+  recordLike(name);
+  addSavedLike(name);
+  saveState({ ...state, liked: true });
   return name;
 }
 
@@ -70,8 +77,8 @@ export function getBorgOfTheDayStats(date = new Date()) {
   const name = getBorgOfTheDay(date);
   return {
     name,
-    pickCount: getPickCount(name),
-    picked: state.picked === true,
+    likeCount: getLikeCount(name),
+    liked: state.liked === true,
     rating: state.rating ?? 0,
     rated: state.rating !== undefined,
   };

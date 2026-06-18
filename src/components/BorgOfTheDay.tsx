@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   getBorgOfTheDayStats,
-  pickBorgOfTheDay,
+  likeBorgOfTheDay,
   rateBorgOfTheDay,
 } from "../lib/borgOfTheDay";
 import StarRating from "./StarRating";
@@ -20,9 +20,9 @@ export default function BorgOfTheDay() {
     };
   }, [refresh]);
 
-  const handlePick = () => {
-    if (stats.picked) return;
-    pickBorgOfTheDay();
+  const handleLike = () => {
+    if (stats.liked) return;
+    likeBorgOfTheDay();
     refresh();
   };
 
@@ -41,13 +41,13 @@ export default function BorgOfTheDay() {
         {stats.name}
       </h2>
       <p className="mt-1.5 text-sm text-muted">
-        Pick and rate today&apos;s featured name on the leaderboard.
+        Like and rate today&apos;s featured name on the leaderboard.
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-4">
-        {stats.picked ? (
+        {stats.liked ? (
           <span
-            aria-label="Picked"
+            aria-label="Liked"
             className="inline-flex h-10 items-center gap-2 rounded-full border border-cyan/30 bg-cyan/10 px-4 text-base font-semibold text-cyan"
           >
             <svg
@@ -63,13 +63,13 @@ export default function BorgOfTheDay() {
             >
               <path d="M20 6 9 17l-5-5" />
             </svg>
-            Picked
+            Liked
           </span>
         ) : (
           <button
             type="button"
-            onClick={handlePick}
-            aria-label="Pick this borg"
+            onClick={handleLike}
+            aria-label="Like this borg"
             className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border border-cyan/30 bg-cyan/10 px-4 text-base font-semibold text-cyan transition-colors hover:bg-cyan/20"
           >
             <svg
@@ -81,7 +81,7 @@ export default function BorgOfTheDay() {
             >
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
-            Pick
+            Like
           </button>
         )}
 
@@ -93,7 +93,7 @@ export default function BorgOfTheDay() {
       </div>
 
       <p className="mt-3 text-sm tabular-nums text-subtle">
-        {stats.pickCount.toLocaleString()} community picks
+        {stats.likeCount.toLocaleString()} community likes
       </p>
     </section>
   );

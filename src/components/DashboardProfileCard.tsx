@@ -12,8 +12,8 @@ const STAT_ITEMS: {
   key: keyof Stats;
   label: string;
 }[] = [
-  { key: "savedPicks", label: "Saved picks" },
-  { key: "communityPicks", label: "Pick votes" },
+  { key: "savedLikes", label: "Saved likes" },
+  { key: "likesCast", label: "Likes cast" },
   { key: "generations", label: "Borgs Generated" },
   { key: "rated", label: "Borgs Rated" },
 ];

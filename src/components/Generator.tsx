@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { generateBorgName, generateMioName } from "../lib/generateName";
-import { recordPick } from "../lib/leaderboard";
-import { addSavedPick, recordRoll } from "../lib/userData";
+import { recordLike } from "../lib/leaderboard";
+import { addSavedLike, recordRoll } from "../lib/userData";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
 const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!";
@@ -52,7 +52,7 @@ function GeneratorCard({
   accent,
   onGenerate,
   rollType,
-  pickable = false,
+  likable = false,
   compact = false,
 }: {
   label: string;
@@ -60,14 +60,14 @@ function GeneratorCard({
   accent: "cyan" | "magenta";
   onGenerate: () => string;
   rollType: "borg" | "mio";
-  pickable?: boolean;
+  likable?: boolean;
   compact?: boolean;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLParagraphElement>(null);
   const reducedMotion = useReducedMotion();
   const [pendingName, setPendingName] = useState<string | null>(null);
-  const [pickedName, setPickedName] = useState<string | null>(null);
+  const [likedName, setLikedName] = useState<string | null>(null);
 
   const accentClasses =
     accent === "cyan"
@@ -85,7 +85,7 @@ function GeneratorCard({
     if (!nameRef.current || !cardRef.current) return;
 
     setPendingName(null);
-    setPickedName(null);
+    setLikedName(null);
     nameRef.current.classList.remove("text-foreground");
     nameRef.current.classList.add("text-subtle");
 
@@ -100,7 +100,7 @@ function GeneratorCard({
     scrambleTo(nameRef.current, name, reducedMotion, () => {
       if (!nameRef.current) return;
 
-      if (pickable) {
+      if (likable) {
         setPendingName(name);
       }
 
@@ -121,16 +121,16 @@ function GeneratorCard({
     });
   };
 
-  const handlePick = () => {
+  const handleLike = () => {
     if (!pendingName) return;
-    recordPick(pendingName);
-    addSavedPick(pendingName);
-    setPickedName(pendingName);
+    recordLike(pendingName);
+    addSavedLike(pendingName);
+    setLikedName(pendingName);
     setPendingName(null);
   };
 
-  const showActions = pickable && pendingName;
-  const showPicked = pickable && pickedName && !pendingName;
+  const showActions = likable && pendingName;
+  const showLiked = likable && likedName && !pendingName;
 
   return (
     <div
@@ -163,14 +163,14 @@ function GeneratorCard({
             {placeholder}
           </p>
         </div>
-        {pickable && (
+        {likable && (
           <div className="flex w-11 shrink-0 flex-col items-center justify-center gap-2 self-stretch">
             {showActions && (
               <>
                 <button
                   type="button"
-                  onClick={handlePick}
-                  aria-label="Pick this borg"
+                  onClick={handleLike}
+                  aria-label="Like this borg"
                   className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-cyan/30 bg-cyan/10 text-cyan transition-colors hover:bg-cyan/20"
                 >
                   <svg
@@ -206,9 +206,9 @@ function GeneratorCard({
                 </button>
               </>
             )}
-            {showPicked && (
+            {showLiked && (
               <span
-                aria-label="Picked"
+                aria-label="Liked"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan/10 text-cyan"
               >
                 <svg
@@ -237,7 +237,7 @@ function GeneratorCard({
           compact ? "py-3" : "py-3.5"
         }`}
       >
-        {pickedName
+        {likedName
           ? "Generate another"
           : `Generate your ${label.toLowerCase()}!`}
       </button>
@@ -318,7 +318,7 @@ export default function Generator({
               accent="cyan"
               rollType="borg"
               onGenerate={generateBorgName}
-              pickable
+              likable
               compact={compact}
             />
           </div>

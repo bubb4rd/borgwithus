@@ -12,7 +12,7 @@ import {
 } from "../lib/leaderboard";
 
 const PODIUM_ORDER = [1, 0, 2] as const;
-const METRICS: LeaderboardMetric[] = ["picks", "rating"];
+const METRICS: LeaderboardMetric[] = ["likes", "rating"];
 const RUNNERS_COUNT = 22;
 const LEADERBOARD_TOTAL = 3 + RUNNERS_COUNT;
 const RUNNERS_LIST_HEIGHT = 340;
@@ -59,7 +59,7 @@ function formatValue(metric: LeaderboardMetric, entry: LeaderboardEntry) {
       <span className="font-semibold text-cyan">
         {entry.value.toLocaleString()}
       </span>{" "}
-      picks
+      likes
     </>
   );
 }
@@ -160,8 +160,8 @@ function PodiumSpot({
 
 export default function Leaderboard({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth();
-  const [metric, setMetric] = useState<LeaderboardMetric>("picks");
-  const [entries, setEntries] = useState(() => getTopEntries("picks", LEADERBOARD_TOTAL));
+  const [metric, setMetric] = useState<LeaderboardMetric>("likes");
+  const [entries, setEntries] = useState(() => getTopEntries("likes", LEADERBOARD_TOTAL));
   const sectionRef = useRef<HTMLElement>(null);
   const podiumRef = useRef<HTMLDivElement>(null);
 

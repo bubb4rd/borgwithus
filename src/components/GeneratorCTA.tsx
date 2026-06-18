@@ -23,7 +23,7 @@ export default function GeneratorCTA() {
           Roll your next borg name
         </h2>
         <p className="mt-1.5 text-sm text-muted">
-          Classic BORG &amp; MIO, plus AI. Pick a favorite and save it to
+          Classic BORG &amp; MIO, plus AI. Like a favorite and save it to
           history.
         </p>
         <div className="mt-2 flex flex-wrap gap-1.5">

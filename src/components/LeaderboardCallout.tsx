@@ -60,11 +60,11 @@ function MetricToggle({
       />
       <button
         type="button"
-        onClick={() => onChange("picks")}
-        aria-label="Picks"
-        aria-pressed={metric === "picks"}
+        onClick={() => onChange("likes")}
+        aria-label="Likes"
+        aria-pressed={metric === "likes"}
         className={`relative z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-colors ${
-          metric === "picks" ? "text-magenta" : "text-subtle hover:text-muted"
+          metric === "likes" ? "text-magenta" : "text-subtle hover:text-muted"
         }`}
       >
         <HeartIcon />
@@ -142,9 +142,9 @@ function EntryRow({
 }
 
 export default function LeaderboardCallout() {
-  const [metric, setMetric] = useState<LeaderboardMetric>("picks");
+  const [metric, setMetric] = useState<LeaderboardMetric>("likes");
   const [entries, setEntries] = useState<LeaderboardEntry[]>(() =>
-    getTopEntries("picks", FETCH_COUNT)
+    getTopEntries("likes", FETCH_COUNT)
   );
 
   useEffect(() => {
@@ -156,7 +156,7 @@ export default function LeaderboardCallout() {
 
   const visibleEntries = entries.slice(0, VISIBLE_COUNT);
   const teaserEntry = entries[VISIBLE_COUNT];
-  const title = metric === "picks" ? "Top picks" : "Top rated";
+  const title = metric === "likes" ? "Top likes" : "Top rated";
 
   return (
     <section className="dashboard-panel flex h-full flex-col p-5">
@@ -172,8 +172,8 @@ export default function LeaderboardCallout() {
 
       {entries.length === 0 ? (
         <p className="flex-1 text-sm text-subtle">
-          {metric === "picks"
-            ? "No picks on the board yet."
+          {metric === "likes"
+            ? "No likes on the board yet."
             : "No ratings on the board yet."}
         </p>
       ) : (

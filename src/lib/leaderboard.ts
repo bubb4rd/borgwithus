@@ -1,7 +1,8 @@
-const PICKS_KEY = "borgwithus-picks";
+const LIKES_KEY = "borgwithus-likes";
+const LEGACY_PICKS_KEY = "borgwithus-picks";
 const RATINGS_KEY = "borgwithus-ratings";
 
-export type LeaderboardMetric = "picks" | "rating";
+export type LeaderboardMetric = "likes" | "rating";
 
 export type LeaderboardEntry = {
   name: string;
@@ -11,7 +12,7 @@ export type LeaderboardEntry = {
 
 type RatingAggregate = { total: number; count: number };
 
-const PICKS_SEED: Record<string, number> = {
+const LIKES_SEED: Record<string, number> = {
   "Ron Borgundy": 2847,
   "LeBorg James": 2103,
   "SpongeBorg": 1891,
@@ -79,6 +80,17 @@ function loadExtra(key: string): Record<string, number> {
   }
 }
 
+function loadLikesExtra(): Record<string, number> {
+  const likes = loadExtra(LIKES_KEY);
+  if (Object.keys(likes).length > 0) return likes;
+
+  const legacy = loadExtra(LEGACY_PICKS_KEY);
+  if (Object.keys(legacy).length === 0) return {};
+
+  saveExtra(LIKES_KEY, legacy);
+  return legacy;
+}
+
 function loadRatings(): Record<string, RatingAggregate> {
   try {
     const raw = localStorage.getItem(RATINGS_KEY);
@@ -98,7 +110,7 @@ function saveRatings(data: Record<string, RatingAggregate>) {
 }
 
 function bumpCount(key: string, name: string) {
-  const extra = loadExtra(key);
+  const extra = loadLikesExtra();
   extra[name] = (extra[name] ?? 0) + 1;
   saveExtra(key, extra);
 }
@@ -107,17 +119,17 @@ function notifyLeaderboard() {
   window.dispatchEvent(new Event("leaderboard:update"));
 }
 
-export function recordPick(name: string) {
-  bumpCount(PICKS_KEY, name);
+export function recordLike(name: string) {
+  bumpCount(LIKES_KEY, name);
   notifyLeaderboard();
   window.dispatchEvent(new Event("user-data:update"));
 }
 
-export function getPickCount(name: string): number {
-  return mergeCounts(PICKS_SEED, PICKS_KEY).get(name) ?? 0;
+export function getLikeCount(name: string): number {
+  return mergeCounts(LIKES_SEED, LIKES_KEY).get(name) ?? 0;
 }
 
-const BORG_OF_THE_DAY_NAMES = Object.keys(PICKS_SEED);
+const BORG_OF_THE_DAY_NAMES = Object.keys(LIKES_SEED);
 
 function hashDayKey(dayKey: string): number {
   let hash = 0;
@@ -152,7 +164,7 @@ function mergeCounts(
   seed: Record<string, number>,
   key: string
 ): Map<string, number> {
-  const extra = loadExtra(key);
+  const extra = key === LIKES_KEY ? loadLikesExtra() : loadExtra(key);
   const totals = new Map<string, number>();
 
   for (const [name, count] of Object.entries(seed)) {
@@ -201,8 +213,8 @@ export function getTopEntries(
   metric: LeaderboardMetric,
   limit = 10
 ): LeaderboardEntry[] {
-  if (metric === "picks") {
-    return topFromCounts(mergeCounts(PICKS_SEED, PICKS_KEY), limit);
+  if (metric === "likes") {
+    return topFromCounts(mergeCounts(LIKES_SEED, LIKES_KEY), limit);
   }
 
   return [...mergeRatings().entries()]
@@ -224,9 +236,9 @@ export const METRIC_LABELS: Record<
   LeaderboardMetric,
   { label: string; description: string }
 > = {
-  picks: {
-    label: "Picks",
-    description: "Names chosen most often by the community.",
+  likes: {
+    label: "Likes",
+    description: "Names liked most often by the community.",
   },
   rating: {
     label: "Rating",
