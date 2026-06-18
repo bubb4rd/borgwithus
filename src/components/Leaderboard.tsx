@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
+import { useAuth } from "../context/AuthContext";
+import ScrollHintList from "./ScrollHintList";
 import {
   getTopEntries,
   METRIC_LABELS,
@@ -11,24 +13,36 @@ import {
 
 const PODIUM_ORDER = [1, 0, 2] as const;
 const METRICS: LeaderboardMetric[] = ["picks", "rating"];
+const RUNNERS_COUNT = 22;
+const LEADERBOARD_TOTAL = 3 + RUNNERS_COUNT;
+const RUNNERS_LIST_HEIGHT = 340;
 
-const rankStyles = {
-  1: {
-    block: "h-44 sm:h-52 border-cyan/30 bg-gradient-to-t from-cyan/20 to-cyan/5 glow-cyan",
-    medal: "bg-gradient-to-br from-cyan to-sky-400 text-on-accent",
-    label: "1st",
-  },
-  2: {
-    block: "h-32 sm:h-40 border-border bg-elevated",
-    medal: "border border-border bg-card text-muted",
-    label: "2nd",
-  },
-  3: {
-    block: "h-24 sm:h-32 border-hazard/25 bg-gradient-to-t from-hazard/15 to-transparent",
-    medal: "bg-gradient-to-br from-hazard to-orange-400 text-on-accent",
-    label: "3rd",
-  },
-} as const;
+function getRankStyles(embedded: boolean) {
+  return {
+    1: {
+      block: embedded
+        ? "h-36 sm:h-40 border-cyan/30 bg-gradient-to-t from-cyan/20 to-cyan/5"
+        : "h-44 sm:h-52 border-cyan/30 bg-gradient-to-t from-cyan/20 to-cyan/5 glow-cyan",
+      medal: "bg-gradient-to-br from-cyan to-sky-400 text-on-accent",
+      label: "1st",
+    },
+    2: {
+      block: embedded
+        ? "h-28 sm:h-32 border-foreground/20 bg-gradient-to-t from-foreground/12 to-elevated"
+        : "h-32 sm:h-40 border-foreground/20 bg-gradient-to-t from-foreground/12 to-elevated",
+      medal:
+        "border border-foreground/25 bg-gradient-to-br from-foreground/20 to-foreground/5 text-foreground",
+      label: "2nd",
+    },
+    3: {
+      block: embedded
+        ? "h-20 sm:h-24 border-hazard/25 bg-gradient-to-t from-hazard/15 to-transparent"
+        : "h-24 sm:h-32 border-hazard/25 bg-gradient-to-t from-hazard/15 to-transparent",
+      medal: "bg-gradient-to-br from-hazard to-orange-400 text-on-accent",
+      label: "3rd",
+    },
+  } as const;
+}
 
 function formatValue(metric: LeaderboardMetric, entry: LeaderboardEntry) {
   if (metric === "rating") {
@@ -50,16 +64,70 @@ function formatValue(metric: LeaderboardMetric, entry: LeaderboardEntry) {
   );
 }
 
+function RunnersList({
+  entries,
+  metric,
+  startRank,
+}: {
+  entries: LeaderboardEntry[];
+  metric: LeaderboardMetric;
+  startRank: number;
+}) {
+  if (entries.length === 0) return null;
+
+  return (
+    <ol className="space-y-2">
+      {entries.map((entry, i) => (
+        <li
+          key={entry.name}
+          className="flex items-center gap-3 rounded-xl border border-border bg-elevated px-3 py-2.5"
+        >
+          <span className="w-6 shrink-0 text-sm font-bold text-subtle">
+            {startRank + i}
+          </span>
+          <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+            {entry.name}
+          </p>
+          <span className="shrink-0 text-sm text-subtle">
+            {formatValue(metric, entry)}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function RunnersScrollPanel({
+  entries,
+  metric,
+}: {
+  entries: LeaderboardEntry[];
+  metric: LeaderboardMetric;
+}) {
+  return (
+    <ScrollHintList
+      className="lg:w-72 lg:shrink-0"
+      showHint={entries.length > 0}
+      height={RUNNERS_LIST_HEIGHT}
+      refreshDeps={[entries, metric]}
+    >
+      <RunnersList entries={entries} metric={metric} startRank={4} />
+    </ScrollHintList>
+  );
+}
+
 function PodiumSpot({
   entry,
   rank,
   metric,
+  embedded = false,
 }: {
   entry: LeaderboardEntry | undefined;
   rank: 1 | 2 | 3;
   metric: LeaderboardMetric;
+  embedded?: boolean;
 }) {
-  const style = rankStyles[rank];
+  const style = getRankStyles(embedded)[rank];
 
   return (
     <div className="flex w-full max-w-[11rem] flex-col items-center sm:max-w-[13rem]">
@@ -90,18 +158,19 @@ function PodiumSpot({
   );
 }
 
-export default function Leaderboard() {
+export default function Leaderboard({ embedded = false }: { embedded?: boolean }) {
+  const { user } = useAuth();
   const [metric, setMetric] = useState<LeaderboardMetric>("picks");
-  const [entries, setEntries] = useState(() => getTopEntries("picks"));
+  const [entries, setEntries] = useState(() => getTopEntries("picks", LEADERBOARD_TOTAL));
   const sectionRef = useRef<HTMLElement>(null);
   const podiumRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setEntries(getTopEntries(metric));
+    setEntries(getTopEntries(metric, LEADERBOARD_TOTAL));
   }, [metric]);
 
   useEffect(() => {
-    const refresh = () => setEntries(getTopEntries(metric));
+    const refresh = () => setEntries(getTopEntries(metric, LEADERBOARD_TOTAL));
     window.addEventListener("leaderboard:update", refresh);
     return () => window.removeEventListener("leaderboard:update", refresh);
   }, [metric]);
@@ -128,7 +197,7 @@ export default function Leaderboard() {
       if (!podiumRef.current) return;
       gsap.fromTo(
         podiumRef.current.querySelectorAll(".podium-spot"),
-        { y: 12, autoAlpha: 0.6 },
+        { y: 12, autoAlpha: 0.85 },
         {
           y: 0,
           autoAlpha: 1,
@@ -141,27 +210,41 @@ export default function Leaderboard() {
     { scope: podiumRef, dependencies: [metric, entries] }
   );
 
-  const ordered = PODIUM_ORDER.map((i) => entries[i]);
-  const { description } = METRIC_LABELS[metric];
+  const podiumEntries = PODIUM_ORDER.map((i) => entries[i]);
+  const runnersUp = entries.slice(3, LEADERBOARD_TOTAL);
 
   return (
-    <section id="leaderboard" ref={sectionRef} className="px-4 py-24 md:px-8">
-      <div className="mx-auto max-w-6xl">
-        <div data-reveal className="mb-12 text-center">
-          <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-magenta">
+    <section
+      id="leaderboard"
+      ref={sectionRef}
+      className={embedded ? "" : "px-4 py-24 md:px-8"}
+    >
+      <div className={embedded ? "" : "mx-auto max-w-6xl"}>
+        <div
+          data-reveal
+          className={`${embedded ? "mb-5 text-left" : "mb-12 text-center"}`}
+        >
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-magenta">
             Community favorites
           </p>
-          <h2 className="text-4xl font-bold text-foreground md:text-5xl">
+          <h2
+            className={`font-bold text-foreground ${
+              embedded ? "text-2xl" : "text-4xl md:text-5xl"
+            }`}
+          >
             Borg Hall of Fame
           </h2>
-          <p className="mx-auto mt-4 max-w-lg text-subtle">{description}</p>
         </div>
 
         <div
           data-reveal
-          className="glass mx-auto max-w-3xl rounded-3xl border border-border p-6 sm:p-10"
+          className={
+            embedded
+              ? "dashboard-panel p-5 sm:p-8"
+              : "glass mx-auto max-w-5xl rounded-3xl border border-border p-6 sm:p-10"
+          }
         >
-          <div className="mb-8 grid grid-cols-2 gap-1 rounded-full border border-border bg-elevated p-1">
+          <div className={`grid grid-cols-2 gap-1 rounded-full border border-border bg-elevated p-1 ${embedded ? "mb-5" : "mb-8"}`}>
             {METRICS.map((m) => (
               <button
                 key={m}
@@ -178,8 +261,8 @@ export default function Leaderboard() {
             ))}
           </div>
 
-          {metric === "rating" && (
-            <p className="mb-6 text-center text-xs text-subtle sm:text-sm">
+          {metric === "rating" && !user && (
+            <p className={`text-xs text-subtle sm:text-sm ${embedded ? "mb-4" : "mb-6 text-center"}`}>
               Ratings are submitted by signed-up members.{" "}
               <Link
                 to="/signup"
@@ -191,18 +274,29 @@ export default function Leaderboard() {
             </p>
           )}
 
-          <div
-            ref={podiumRef}
-            className="flex items-end justify-center gap-3 sm:gap-6"
-          >
-            {ordered.map((entry, i) => {
-              const rank = (PODIUM_ORDER[i] + 1) as 1 | 2 | 3;
-              return (
-                <div key={`${metric}-${rank}`} className="podium-spot flex-1">
-                  <PodiumSpot entry={entry} rank={rank} metric={metric} />
-                </div>
-              );
-            })}
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch lg:gap-8">
+            <div
+              ref={podiumRef}
+              className="flex min-w-0 flex-1 items-end justify-center gap-3 sm:gap-6"
+            >
+              {podiumEntries.map((entry, i) => {
+                const rank = (PODIUM_ORDER[i] + 1) as 1 | 2 | 3;
+                return (
+                  <div key={`${metric}-${rank}`} className="podium-spot flex-1">
+                    <PodiumSpot
+                      entry={entry}
+                      rank={rank}
+                      metric={metric}
+                      embedded={embedded}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {runnersUp.length > 0 && (
+              <RunnersScrollPanel entries={runnersUp} metric={metric} />
+            )}
           </div>
         </div>
       </div>

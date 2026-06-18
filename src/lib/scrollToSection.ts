@@ -1,6 +1,6 @@
 import gsap from "gsap";
 
-const NAV_OFFSET = 88;
+  const NAV_OFFSET = 64;
 
 export function scrollToSection(target: string) {
   const id = target.startsWith("#") ? target : `#${target}`;

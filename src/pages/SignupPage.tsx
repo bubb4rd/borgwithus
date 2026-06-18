@@ -1,15 +1,21 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import AuthLayout, { inputClass } from "../components/AuthLayout";
+import { useAuth } from "../context/AuthContext";
 
 export default function SignupPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
+  const { user, loading, signup } = useAuth();
+
+  if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value;
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
     const password = (form.elements.namedItem("password") as HTMLInputElement)
       .value;
     const confirm = (
@@ -25,8 +31,9 @@ export default function SignupPage() {
     setErrorMessage("");
     setStatus("loading");
     window.setTimeout(() => {
+      signup(name, email);
       setStatus("idle");
-      navigate("/");
+      navigate("/dashboard");
     }, 600);
   };
 

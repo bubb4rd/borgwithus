@@ -1,19 +1,27 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import AuthLayout, { inputClass } from "../components/AuthLayout";
+import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
+  const { user, loading, login } = useAuth();
+
+  if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+
     setErrorMessage("");
     setStatus("loading");
     window.setTimeout(() => {
+      login(email);
       setStatus("idle");
-      navigate("/");
+      navigate("/dashboard");
     }, 600);
   };
 

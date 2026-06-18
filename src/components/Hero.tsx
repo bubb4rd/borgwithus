@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
+import { useAuth } from "../context/AuthContext";
 import { scrollToSection } from "../lib/scrollToSection";
 
 const entrance = {
@@ -12,8 +13,52 @@ const entrance = {
   clearProps: "opacity,visibility,transform",
 };
 
+function HeroMediaPlaceholder() {
+  return (
+    <div
+      className="hero-media mx-auto flex aspect-[4/5] w-[85.75%] min-h-[18.85rem] flex-col items-center justify-center gap-4 overflow-hidden rounded-3xl border border-dashed border-border bg-elevated/80 text-subtle sm:min-h-[22.25rem] lg:aspect-[3/4] lg:min-h-[24rem]"
+      aria-label="Hero image or video placeholder"
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <circle cx="8.5" cy="10.5" r="1.5" fill="currentColor" stroke="none" />
+            <path d="m21 16-5.5-5.5L5 19" />
+          </svg>
+        </div>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden
+          >
+            <path d="M8 5v14l11-7L8 5z" />
+          </svg>
+        </div>
+      </div>
+      <p className="px-6 text-center text-sm font-medium">
+        Image or video coming soon
+      </p>
+    </div>
+  );
+}
+
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
+  const { user } = useAuth();
 
   useGSAP(
     () => {
@@ -25,6 +70,11 @@ export default function Hero() {
           ".hero-cta-row",
           { y: 20, ...entrance, clearProps: "transform" },
           "-=0.35"
+        )
+        .from(
+          ".hero-media",
+          { y: 32, scale: 0.98, ...entrance, duration: 0.8 },
+          "-=0.5"
         );
     },
     { scope: sectionRef }
@@ -37,8 +87,9 @@ export default function Hero() {
       className="flex min-h-screen items-center px-4 pt-28 pb-16 md:px-8"
     >
       <div className="mx-auto w-full max-w-6xl">
-        <div className="max-w-3xl">
-          <p className="hero-badge mb-6 inline-flex items-center gap-2 rounded-full border border-hazard/25 bg-hazard/5 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-muted">
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
+          <div className="max-w-3xl">
+            <p className="hero-badge mb-6 inline-flex items-center gap-2 rounded-full border border-hazard/25 bg-hazard/5 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-muted">
             <svg
               className="h-3.5 w-3.5 shrink-0 text-hazard"
               viewBox="0 0 24 24"
@@ -56,17 +107,21 @@ export default function Hero() {
             Black Out Rage Gallon
           </p>
           <h1 className="hero-title text-5xl font-bold leading-[1.08] text-foreground md:text-6xl lg:text-7xl">
-            Generate your <span className="text-hazard">borg.</span>
+            <span className="block">New look,</span>
+            <span className="block">new features,</span>
+            <span className="block">
+              same <span className="text-hazard">BORG.</span>
+            </span>
           </h1>
           <p className="hero-sub mt-6 max-w-xl text-lg text-muted md:text-xl">
             Take your drinking to another level with a BORG!
           </p>
           <div className="hero-cta-row mt-10 flex items-center gap-3 sm:gap-4">
             <Link
-              to="/signup"
+              to={user ? "/dashboard" : "/signup"}
               className="hero-btn hero-btn-text border-transparent bg-gradient-to-r from-cyan to-sky-400 font-semibold text-on-accent transition-opacity hover:opacity-90"
             >
-              Sign up
+              {user ? "Dashboard" : "Sign up"}
             </Link>
             <button
               type="button"
@@ -94,6 +149,9 @@ export default function Hero() {
               </svg>
             </a>
           </div>
+          </div>
+
+          <HeroMediaPlaceholder />
         </div>
       </div>
     </section>

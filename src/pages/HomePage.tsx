@@ -2,6 +2,7 @@ import { useRef } from "react";
 import gsap from "gsap";
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
+import AIFeatureCallout from "../components/AIFeatureCallout";
 import HowTo from "../components/HowTo";
 import About from "../components/About";
 import Generator from "../components/Generator";
@@ -43,6 +44,7 @@ export default function HomePage() {
       <HashScroll />
       <main>
         <Hero />
+        <AIFeatureCallout />
         <HowTo />
         <About />
         <Generator />

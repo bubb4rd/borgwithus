@@ -4,6 +4,7 @@ import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
 import App from "./App";
 import "./index.css";
 
@@ -11,6 +12,8 @@ gsap.registerPlugin(useGSAP, ScrollTrigger, ScrollToPlugin);
 
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </ThemeProvider>
 );

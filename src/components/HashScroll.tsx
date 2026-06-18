@@ -6,7 +6,8 @@ export default function HashScroll() {
   const { pathname, hash } = useLocation();
 
   useEffect(() => {
-    if (pathname !== "/" || !hash) return;
+    if (pathname !== "/") return;
+    if (!hash) return;
 
     const frame = requestAnimationFrame(() => scrollToSection(hash));
     return () => cancelAnimationFrame(frame);
