@@ -1,21 +1,4 @@
-import { getRecentRolls, getSavedLikes } from "./userData";
-
-const LIKES_KEY = "borgwithus-likes";
-const LEGACY_PICKS_KEY = "borgwithus-picks";
-
-export function getUserLikeCount(): number {
-  try {
-    let raw = localStorage.getItem(LIKES_KEY);
-    if (!raw) {
-      raw = localStorage.getItem(LEGACY_PICKS_KEY);
-    }
-    if (!raw) return 0;
-    const likes = JSON.parse(raw) as Record<string, number>;
-    return Object.values(likes).reduce((sum, n) => sum + n, 0);
-  } catch {
-    return 0;
-  }
-}
+import { getLikesCastCount, getRecentRolls, getSavedLikes } from "./userData";
 
 export function formatMemberSince(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -37,7 +20,7 @@ export function getDashboardStats() {
   const likes = getSavedLikes();
   return {
     savedLikes: likes.length,
-    likesCast: getUserLikeCount(),
+    likesCast: getLikesCastCount(),
     generations: getRecentRolls().length,
     rated: likes.filter((like) => like.rating).length,
   };

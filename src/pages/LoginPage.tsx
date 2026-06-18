@@ -7,22 +7,30 @@ export default function LoginPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, isConfigured } = useAuth();
 
   if (!loading && user) return <Navigate to="/dashboard" replace />;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement)
+      .value;
 
     setErrorMessage("");
     setStatus("loading");
-    window.setTimeout(() => {
-      login(email);
+
+    try {
+      await login(email, password);
       setStatus("idle");
       navigate("/dashboard");
-    }, 600);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not log in."
+      );
+      setStatus("error");
+    }
   };
 
   return (
@@ -34,6 +42,12 @@ export default function LoginPage() {
         <p className="mt-2 text-sm text-muted">
           Log in to save your favorite borg names.
         </p>
+        {!isConfigured && (
+          <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            Auth is running in local demo mode. Add Supabase env vars for real
+            sign-in.
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

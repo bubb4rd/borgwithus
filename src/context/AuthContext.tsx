@@ -6,6 +6,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  authErrorMessage,
+  fetchProfileForUser,
+  updateProfile,
+  userFromAuth,
+} from "../lib/profile";
+import { isAdminEmail } from "../lib/adminAccess";
+import { getSupabase, isSupabaseConfigured } from "../lib/supabase";
+import { setPendingEmailVerification } from "../lib/pendingVerification";
+import { bindUserStorage } from "../lib/userStorage";
 
 export type AiTone = "funny" | "clean";
 
@@ -15,22 +25,33 @@ export type UserSettings = {
 };
 
 export type User = {
+  id: string;
   name: string;
   email: string;
   memberSince: string;
+  isAdmin: boolean;
   settings: UserSettings;
 };
+
+export type SignupResult =
+  | { status: "session" }
+  | { status: "email_confirmation"; email: string };
 
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
-  login: (email: string) => void;
-  signup: (name: string, email: string) => void;
-  logout: () => void;
-  updateUser: (patch: Partial<Pick<User, "name" | "settings">>) => void;
+  isConfigured: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (
+    name: string,
+    email: string,
+    password: string
+  ) => Promise<SignupResult>;
+  logout: () => Promise<void>;
+  updateUser: (patch: Partial<Pick<User, "name" | "settings">>) => Promise<void>;
 };
 
-const STORAGE_KEY = "borgwithus-user";
+const MOCK_STORAGE_KEY = "borgwithus-user";
 
 const DEFAULT_SETTINGS: UserSettings = {
   emailNotifications: false,
@@ -42,23 +63,40 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function normalizeUser(raw: User): User {
   return {
     ...raw,
+    isAdmin: raw.isAdmin ?? isAdminEmail(raw.email),
     settings: { ...DEFAULT_SETTINGS, ...raw.settings },
   };
 }
 
-function loadUser(): User | null {
+function loadMockUser(): User | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(MOCK_STORAGE_KEY);
     if (!raw) return null;
-    return normalizeUser(JSON.parse(raw) as User);
+    const user = normalizeUser(JSON.parse(raw) as User);
+    return user.id ? user : { ...user, id: user.email };
   } catch {
     return null;
   }
 }
 
-function saveUser(user: User | null) {
-  if (user) localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  else localStorage.removeItem(STORAGE_KEY);
+function saveMockUser(user: User | null) {
+  if (user) localStorage.setItem(MOCK_STORAGE_KEY, JSON.stringify(user));
+  else localStorage.removeItem(MOCK_STORAGE_KEY);
+}
+
+function syncAuthUser(setUser: (user: User | null) => void, next: User | null) {
+  bindUserStorage(next?.id ?? null);
+  setUser(next);
+}
+
+async function resolveAuthUser(
+  authUser: Parameters<typeof fetchProfileForUser>[0]
+) {
+  try {
+    return await fetchProfileForUser(authUser);
+  } catch {
+    return userFromAuth(authUser);
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -66,65 +104,183 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(loadUser());
-    setLoading(false);
-  }, []);
-
-  const login = useCallback((email: string) => {
-    const existing = loadUser();
-    if (existing?.email === email) {
-      setUser(existing);
+    if (!isSupabaseConfigured) {
+      syncAuthUser(setUser, loadMockUser());
+      setLoading(false);
       return;
     }
 
-    const local = email.split("@")[0] || "Borger";
-    const next: User = {
-      name: local.charAt(0).toUpperCase() + local.slice(1),
-      email,
-      memberSince: new Date().toISOString(),
-      settings: DEFAULT_SETTINGS,
+    const supabase = getSupabase();
+    let active = true;
+
+    const syncSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+
+      const authUser = data.session?.user;
+      if (!authUser) {
+        syncAuthUser(setUser, null);
+        setLoading(false);
+        return;
+      }
+
+      const profile = await resolveAuthUser(authUser);
+      if (active) syncAuthUser(setUser, profile);
+      if (active) setLoading(false);
     };
-    saveUser(next);
-    setUser(next);
-  }, []);
 
-  const signup = useCallback((name: string, email: string) => {
-    const next: User = {
-      name,
-      email,
-      memberSince: new Date().toISOString(),
-      settings: DEFAULT_SETTINGS,
-    };
-    saveUser(next);
-    setUser(next);
-  }, []);
+    void syncSession();
 
-  const logout = useCallback(() => {
-    saveUser(null);
-    setUser(null);
-  }, []);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
 
-  const updateUser = useCallback(
-    (patch: Partial<Pick<User, "name" | "settings">>) => {
-      setUser((current) => {
-        if (!current) return current;
-        const next = normalizeUser({
-          ...current,
-          ...patch,
-          settings: patch.settings
-            ? { ...current.settings, ...patch.settings }
-            : current.settings,
+      if (!session?.user) {
+        syncAuthUser(setUser, null);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      void resolveAuthUser(session.user)
+        .then((profile) => {
+          if (active) syncAuthUser(setUser, profile);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
         });
-        saveUser(next);
-        return next;
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      const existing = loadMockUser();
+      if (existing?.email === email) {
+        syncAuthUser(setUser, existing);
+        return;
+      }
+
+      const local = email.split("@")[0] || "Borger";
+      const next: User = {
+        id: email,
+        name: local.charAt(0).toUpperCase() + local.slice(1),
+        email,
+        memberSince: new Date().toISOString(),
+        isAdmin: isAdminEmail(email),
+        settings: DEFAULT_SETTINGS,
+      };
+      saveMockUser(next);
+      syncAuthUser(setUser, next);
+      return;
+    }
+
+    const supabase = getSupabase();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw new Error(authErrorMessage(error));
+
+    const profile = await resolveAuthUser(data.user);
+    syncAuthUser(setUser, profile);
+  }, []);
+
+  const signup = useCallback(
+    async (name: string, email: string, password: string): Promise<SignupResult> => {
+      if (!isSupabaseConfigured) {
+        const next: User = {
+          id: email,
+          name,
+          email,
+          memberSince: new Date().toISOString(),
+          isAdmin: isAdminEmail(email),
+          settings: DEFAULT_SETTINGS,
+        };
+        saveMockUser(next);
+        syncAuthUser(setUser, next);
+        return { status: "session" };
+      }
+
+      const supabase = getSupabase();
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
       });
+      if (error) throw new Error(authErrorMessage(error));
+      if (!data.user) throw new Error("Sign up failed. Please try again.");
+
+      if (!data.session) {
+        setPendingEmailVerification(email);
+        return { status: "email_confirmation", email };
+      }
+
+      const profile = await resolveAuthUser(data.user);
+      syncAuthUser(setUser, profile);
+      return { status: "session" };
     },
     []
   );
 
+  const logout = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      saveMockUser(null);
+      syncAuthUser(setUser, null);
+      return;
+    }
+
+    const supabase = getSupabase();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw new Error(authErrorMessage(error));
+    syncAuthUser(setUser, null);
+  }, []);
+
+  const updateUser = useCallback(
+    async (patch: Partial<Pick<User, "name" | "settings">>) => {
+      if (!user) return;
+
+      const next = normalizeUser({
+        ...user,
+        ...patch,
+        settings: patch.settings
+          ? { ...user.settings, ...patch.settings }
+          : user.settings,
+      });
+
+      if (!isSupabaseConfigured) {
+        saveMockUser(next);
+        setUser(next);
+        return;
+      }
+
+      const supabase = getSupabase();
+      const { data } = await supabase.auth.getUser();
+      const authUser = data.user;
+      if (!authUser) throw new Error("You are not logged in.");
+
+      await updateProfile(authUser.id, patch);
+      setUser(next);
+    },
+    [user]
+  );
+
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, signup, logout, updateUser }}
+      value={{
+        user,
+        loading,
+        isConfigured: isSupabaseConfigured,
+        login,
+        signup,
+        logout,
+        updateUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -7,13 +7,20 @@ import { useAuth } from "../context/AuthContext";
 export default function DashboardShell({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="dashboard-bg flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted">Loading your dashboard...</p>
+      </div>
+    );
+  }
+
   if (!user) return <Navigate to="/login" replace />;
 
   return (
     <div className="dashboard-bg min-h-screen">
       <DashboardNavbar />
-      <main className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
+      <main key={user.id} className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
         {children}
       </main>
       <ScrollToTop />

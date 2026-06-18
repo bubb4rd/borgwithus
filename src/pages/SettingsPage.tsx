@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import DashboardPageHeader from "../components/DashboardPageHeader";
 import DashboardShell from "../components/DashboardShell";
 import { useAuth } from "../context/AuthContext";
 
@@ -11,7 +12,7 @@ export default function SettingsPage() {
 
   if (!user) return null;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const name = (form.elements.namedItem("name") as HTMLInputElement).value;
@@ -19,23 +20,22 @@ export default function SettingsPage() {
       form.elements.namedItem("emailNotifications") as HTMLInputElement
     ).checked;
 
-    updateUser({
-      name,
-      settings: { ...user.settings, emailNotifications },
-    });
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2000);
+    try {
+      await updateUser({
+        name,
+        settings: { ...user.settings, emailNotifications },
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaved(false);
+    }
   };
 
   return (
     <DashboardShell>
       <div className="mx-auto max-w-lg">
-        <div className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-subtle">
-            Account
-          </p>
-          <h1 className="mt-1 text-3xl font-bold text-foreground">Settings</h1>
-        </div>
+        <DashboardPageHeader eyebrow="Account" title="Settings" />
 
         <form
           onSubmit={handleSubmit}

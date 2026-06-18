@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import ScrollHintList from "./ScrollHintList";
 import StarRating from "./StarRating";
 import {
@@ -23,13 +24,20 @@ export default function SavedLikes({
   scrollable = false,
   scrollHeight,
 }: SavedLikesProps) {
-  const [likes, setLikes] = useState<SavedLike[]>(getSavedLikes);
+  const { user } = useAuth();
+  const [likes, setLikes] = useState<SavedLike[]>([]);
 
   useEffect(() => {
+    if (!user?.id) {
+      setLikes([]);
+      return;
+    }
+
     const refresh = () => setLikes(getSavedLikes());
+    refresh();
     window.addEventListener("user-data:update", refresh);
     return () => window.removeEventListener("user-data:update", refresh);
-  }, []);
+  }, [user?.id]);
 
   const visible = limit ? likes.slice(0, limit) : likes;
   const hasMore = limit !== undefined && likes.length > limit;
@@ -80,9 +88,7 @@ export default function SavedLikes({
       }`}
     >
       <div className={`mb-4 ${scrollable ? "shrink-0" : ""}`}>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan">
-          Your likes
-        </p>
+        <p className="dash-eyebrow">Your likes</p>
         <h2 className="mt-1 text-xl font-bold text-foreground">Saved likes</h2>
       </div>
 

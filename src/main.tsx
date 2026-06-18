@@ -5,10 +5,13 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
+import { runBorgDataResetIfNeeded } from "./lib/borgDataReset";
 import App from "./App";
 import "./index.css";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, ScrollToPlugin);
+
+runBorgDataResetIfNeeded();
 
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider>

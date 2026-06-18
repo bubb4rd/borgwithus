@@ -7,11 +7,11 @@ export default function SignupPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
-  const { user, loading, signup } = useAuth();
+  const { user, loading, signup, isConfigured } = useAuth();
 
   if (!loading && user) return <Navigate to="/dashboard" replace />;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const name = (form.elements.namedItem("name") as HTMLInputElement).value;
@@ -30,11 +30,21 @@ export default function SignupPage() {
 
     setErrorMessage("");
     setStatus("loading");
-    window.setTimeout(() => {
-      signup(name, email);
+
+    try {
+      const result = await signup(name, email, password);
       setStatus("idle");
+      if (result.status === "email_confirmation") {
+        navigate("/signup/confirm");
+        return;
+      }
       navigate("/dashboard");
-    }, 600);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not create account."
+      );
+      setStatus("error");
+    }
   };
 
   return (
@@ -46,6 +56,12 @@ export default function SignupPage() {
         <p className="mt-2 text-sm text-muted">
           Create an account and take your drinking to the next level.
         </p>
+        {!isConfigured && (
+          <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            Auth is running in local demo mode. Add Supabase env vars for real
+            sign-up.
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

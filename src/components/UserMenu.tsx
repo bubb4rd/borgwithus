@@ -36,8 +36,7 @@ export default function UserMenu({ dropUp = false }: { dropUp?: boolean }) {
 
   const handleLogout = () => {
     close();
-    logout();
-    navigate("/");
+    void logout().then(() => navigate("/"));
   };
 
   const itemClass =
@@ -46,6 +45,11 @@ export default function UserMenu({ dropUp = false }: { dropUp?: boolean }) {
   const onPublicSite =
     location.pathname !== "/dashboard" &&
     !location.pathname.startsWith("/dashboard/");
+
+  const onAdminDashboard = location.pathname.startsWith("/dashboard/admin");
+
+  const showDashboardLink = onPublicSite || onAdminDashboard;
+  const showAdminLink = user.isAdmin && !onAdminDashboard;
 
   return (
     <div ref={menuRef} className="relative">
@@ -77,7 +81,7 @@ export default function UserMenu({ dropUp = false }: { dropUp?: boolean }) {
           </div>
 
           <div className="p-1">
-            {onPublicSite && (
+            {showDashboardLink && (
               <Link
                 to="/dashboard"
                 role="menuitem"
@@ -85,6 +89,16 @@ export default function UserMenu({ dropUp = false }: { dropUp?: boolean }) {
                 className={itemClass}
               >
                 Dashboard
+              </Link>
+            )}
+            {showAdminLink && (
+              <Link
+                to="/dashboard/admin"
+                role="menuitem"
+                onClick={close}
+                className={itemClass}
+              >
+                Admin
               </Link>
             )}
             <Link

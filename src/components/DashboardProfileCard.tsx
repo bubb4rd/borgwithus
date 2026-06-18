@@ -14,19 +14,27 @@ const STAT_ITEMS: {
 }[] = [
   { key: "savedLikes", label: "Saved likes" },
   { key: "likesCast", label: "Likes cast" },
-  { key: "generations", label: "Borgs Generated" },
-  { key: "rated", label: "Borgs Rated" },
+  { key: "generations", label: "Borgs generated" },
+  { key: "rated", label: "Borgs rated" },
 ];
 
 export default function DashboardProfileCard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<Stats>(getDashboardStats);
+  const [stats, setStats] = useState<Stats>({
+    savedLikes: 0,
+    likesCast: 0,
+    generations: 0,
+    rated: 0,
+  });
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const refresh = () => setStats(getDashboardStats());
+    refresh();
     window.addEventListener("user-data:update", refresh);
     return () => window.removeEventListener("user-data:update", refresh);
-  }, []);
+  }, [user?.id]);
 
   if (!user) return null;
 
@@ -54,7 +62,7 @@ export default function DashboardProfileCard() {
         {STAT_ITEMS.map(({ key, label }) => (
           <div
             key={key}
-            className="rounded-lg border border-border/60 bg-background/40 px-3 py-2.5"
+            className="rounded-lg border border-border/60 bg-elevated/40 px-3 py-2.5"
           >
             <dt className="text-xs text-subtle">{label}</dt>
             <dd className="mt-0.5 text-2xl font-bold tabular-nums text-foreground">

@@ -158,7 +158,13 @@ function PodiumSpot({
   );
 }
 
-export default function Leaderboard({ embedded = false }: { embedded?: boolean }) {
+export default function Leaderboard({
+  embedded = false,
+  hideHeader = false,
+}: {
+  embedded?: boolean;
+  hideHeader?: boolean;
+}) {
   const { user } = useAuth();
   const [metric, setMetric] = useState<LeaderboardMetric>("likes");
   const [entries, setEntries] = useState(() => getTopEntries("likes", LEADERBOARD_TOTAL));
@@ -220,6 +226,7 @@ export default function Leaderboard({ embedded = false }: { embedded?: boolean }
       className={embedded ? "" : "px-4 py-24 md:px-8"}
     >
       <div className={embedded ? "" : "mx-auto max-w-6xl"}>
+        {!hideHeader && (
         <div
           data-reveal
           className={`${embedded ? "mb-5 text-left" : "mb-12 text-center"}`}
@@ -235,6 +242,7 @@ export default function Leaderboard({ embedded = false }: { embedded?: boolean }
             Borg Hall of Fame
           </h2>
         </div>
+        )}
 
         <div
           data-reveal
@@ -274,6 +282,13 @@ export default function Leaderboard({ embedded = false }: { embedded?: boolean }
             </p>
           )}
 
+          {entries.length === 0 ? (
+            <p className={`text-sm text-subtle ${embedded ? "" : "text-center"}`}>
+              {metric === "likes"
+                ? "No likes yet. Like names from the generator to start the board."
+                : "No ratings yet. Sign up and rate your favorite borgs."}
+            </p>
+          ) : (
           <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch lg:gap-8">
             <div
               ref={podiumRef}
@@ -298,6 +313,7 @@ export default function Leaderboard({ embedded = false }: { embedded?: boolean }
               <RunnersScrollPanel entries={runnersUp} metric={metric} />
             )}
           </div>
+          )}
         </div>
       </div>
     </section>

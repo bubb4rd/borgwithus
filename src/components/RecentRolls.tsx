@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import ScrollHintList from "./ScrollHintList";
 import {
   formatRelativeTime,
@@ -70,13 +71,20 @@ export default function RecentRolls({
   scrollable = false,
   scrollHeight,
 }: RecentRollsProps) {
-  const [rolls, setRolls] = useState<RecentRoll[]>(getRecentRolls);
+  const { user } = useAuth();
+  const [rolls, setRolls] = useState<RecentRoll[]>([]);
 
   useEffect(() => {
+    if (!user?.id) {
+      setRolls([]);
+      return;
+    }
+
     const refresh = () => setRolls(getRecentRolls());
+    refresh();
     window.addEventListener("user-data:update", refresh);
     return () => window.removeEventListener("user-data:update", refresh);
-  }, []);
+  }, [user?.id]);
 
   const visible = limit ? rolls.slice(0, limit) : rolls;
   const teaserRoll =
@@ -91,15 +99,13 @@ export default function RecentRolls({
       }`}
     >
       <div className={`mb-4 ${scrollable ? "shrink-0" : ""}`}>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-lime">
-          History
-        </p>
+        <p className="dash-eyebrow text-lime">History</p>
         <h2 className="mt-1 text-xl font-bold text-foreground">Recent rolls</h2>
       </div>
 
       {visible.length === 0 ? (
         <p className="flex-1 text-sm text-subtle">
-          Your latest borg, mio, and AI names will show up here.
+          Your latest borg, Mio, and AI names will show up here.
         </p>
       ) : scrollable ? (
         <ScrollHintList height={scrollHeight} refreshDeps={[visible.length]}>

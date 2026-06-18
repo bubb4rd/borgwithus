@@ -1,3 +1,5 @@
+import names from "../data/names.json";
+
 const LIKES_KEY = "borgwithus-likes";
 const LEGACY_PICKS_KEY = "borgwithus-picks";
 const RATINGS_KEY = "borgwithus-ratings";
@@ -11,62 +13,6 @@ export type LeaderboardEntry = {
 };
 
 type RatingAggregate = { total: number; count: number };
-
-const LIKES_SEED: Record<string, number> = {
-  "Ron Borgundy": 2847,
-  "LeBorg James": 2103,
-  "SpongeBorg": 1891,
-  "Borgan Freeman": 1654,
-  "Heisenborg": 1420,
-  "Borgzilla": 1288,
-  "Borg Washington": 1102,
-  "CyBorg": 987,
-  "Borganic": 854,
-  "Hamborger": 721,
-  "Borg Sumner": 698,
-  "Borghini": 645,
-  "Thor Borg": 612,
-  "Borgan Donor": 589,
-  "Borgito": 556,
-  "FreeBorg": 523,
-  "Borgle": 491,
-  "Borgatelli": 468,
-  "Borg Bunny": 445,
-  "Borgahontas": 422,
-  "Borg Simpson": 399,
-  "Borgrito": 376,
-  "Borg Knuckles": 353,
-  "Borgward": 331,
-  "Borgasaurus": 309,
-};
-
-const RATING_SEED: Record<string, RatingAggregate> = {
-  "SpongeBorg": { total: 4.9 * 312, count: 312 },
-  "Ron Borgundy": { total: 4.8 * 428, count: 428 },
-  "Borgan Freeman": { total: 4.7 * 256, count: 256 },
-  "LeBorg James": { total: 4.6 * 198, count: 198 },
-  "Heisenborg": { total: 4.5 * 174, count: 174 },
-  "Borgzilla": { total: 4.4 * 143, count: 143 },
-  "Borg Washington": { total: 4.3 * 118, count: 118 },
-  "CyBorg": { total: 4.2 * 96, count: 96 },
-  "Borganic": { total: 4.1 * 84, count: 84 },
-  "Hamborger": { total: 4.0 * 71, count: 71 },
-  "Borg Sumner": { total: 3.9 * 68, count: 68 },
-  "Borghini": { total: 3.9 * 64, count: 64 },
-  "Thor Borg": { total: 3.8 * 61, count: 61 },
-  "Borgan Donor": { total: 3.8 * 58, count: 58 },
-  "Borgito": { total: 3.7 * 55, count: 55 },
-  "FreeBorg": { total: 3.7 * 52, count: 52 },
-  "Borgle": { total: 3.6 * 49, count: 49 },
-  "Borgatelli": { total: 3.6 * 46, count: 46 },
-  "Borg Bunny": { total: 3.5 * 44, count: 44 },
-  "Borgahontas": { total: 3.5 * 42, count: 42 },
-  "Borg Simpson": { total: 3.4 * 39, count: 39 },
-  "Borgrito": { total: 3.4 * 37, count: 37 },
-  "Borg Knuckles": { total: 3.3 * 35, count: 35 },
-  "Borgward": { total: 3.3 * 33, count: 33 },
-  "Borgasaurus": { total: 3.2 * 31, count: 31 },
-};
 
 function loadExtra(key: string): Record<string, number> {
   try {
@@ -126,10 +72,17 @@ export function recordLike(name: string) {
 }
 
 export function getLikeCount(name: string): number {
-  return mergeCounts(LIKES_SEED, LIKES_KEY).get(name) ?? 0;
+  return loadLikesExtra()[name] ?? 0;
 }
 
-const BORG_OF_THE_DAY_NAMES = Object.keys(LIKES_SEED);
+export function getNameRatingStats(name: string): {
+  average: number;
+  count: number;
+} {
+  const entry = loadRatings()[name];
+  if (!entry?.count) return { average: 0, count: 0 };
+  return { average: entry.total / entry.count, count: entry.count };
+}
 
 function hashDayKey(dayKey: string): number {
   let hash = 0;
@@ -140,12 +93,17 @@ function hashDayKey(dayKey: string): number {
 }
 
 export function getDayKey(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function getBorgOfTheDay(date = new Date()): string {
+  const pool = names.borg;
+  if (pool.length === 0) return "Borg";
   const dayKey = getDayKey(date);
-  return BORG_OF_THE_DAY_NAMES[hashDayKey(dayKey) % BORG_OF_THE_DAY_NAMES.length];
+  return pool[hashDayKey(dayKey) % pool.length];
 }
 
 export function recordRating(name: string, stars: number) {
@@ -158,45 +116,6 @@ export function recordRating(name: string, stars: number) {
   saveRatings(ratings);
   notifyLeaderboard();
   window.dispatchEvent(new Event("user-data:update"));
-}
-
-function mergeCounts(
-  seed: Record<string, number>,
-  key: string
-): Map<string, number> {
-  const extra = key === LIKES_KEY ? loadLikesExtra() : loadExtra(key);
-  const totals = new Map<string, number>();
-
-  for (const [name, count] of Object.entries(seed)) {
-    totals.set(name, count + (extra[name] ?? 0));
-  }
-  for (const [name, count] of Object.entries(extra)) {
-    if (!seed[name]) totals.set(name, count);
-  }
-
-  return totals;
-}
-
-function mergeRatings(): Map<string, RatingAggregate> {
-  const totals = new Map<string, RatingAggregate>();
-
-  for (const [name, seed] of Object.entries(RATING_SEED)) {
-    totals.set(name, { ...seed });
-  }
-
-  for (const [name, local] of Object.entries(loadRatings())) {
-    const existing = totals.get(name);
-    if (existing) {
-      totals.set(name, {
-        total: existing.total + local.total,
-        count: existing.count + local.count,
-      });
-    } else {
-      totals.set(name, local);
-    }
-  }
-
-  return totals;
 }
 
 function topFromCounts(
@@ -214,10 +133,10 @@ export function getTopEntries(
   limit = 10
 ): LeaderboardEntry[] {
   if (metric === "likes") {
-    return topFromCounts(mergeCounts(LIKES_SEED, LIKES_KEY), limit);
+    return topFromCounts(new Map(Object.entries(loadLikesExtra())), limit);
   }
 
-  return [...mergeRatings().entries()]
+  return Object.entries(loadRatings())
     .map(([name, { total, count }]) => ({
       name,
       avg: count ? total / count : 0,

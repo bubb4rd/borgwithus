@@ -110,6 +110,12 @@
   }
 
   .dashboard-bg {
+    --dash-foreground: var(--text-primary);
+    --dash-muted: var(--text-muted);
+    --dash-border: var(--border-color);
+    --dash-surface: var(--bg-card);
+    --dash-green-soft: color-mix(in srgb, var(--accent-cyan) 14%, transparent);
+    --dash-green: var(--accent-cyan);
     background-color: var(--bg-page);
     background-image:
       linear-gradient(
@@ -126,6 +132,224 @@
 
   .dashboard-panel {
     @apply rounded-3xl border border-border bg-card;
+  }
+
+  .dashboard-panel-interactive {
+    @apply transition-[box-shadow,transform,border-color] duration-200;
+  }
+
+  .dashboard-panel-interactive:hover {
+    border-color: color-mix(in srgb, var(--accent-cyan) 35%, var(--border-color));
+    box-shadow: 0 14px 36px -16px color-mix(in srgb, var(--accent-cyan) 22%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .dash-eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.18em] text-cyan;
+  }
+
+  .admin-bg {
+    --dash-green: var(--accent-cyan);
+    --dash-green-dark: color-mix(in srgb, var(--accent-cyan) 75%, #000);
+    --dash-green-soft: color-mix(in srgb, var(--accent-cyan) 14%, transparent);
+    --dash-green-muted: color-mix(in srgb, var(--accent-cyan) 35%, transparent);
+    --dash-bg: var(--bg-page);
+    --dash-surface: var(--bg-card);
+    --dash-border: var(--border-color);
+    --dash-foreground: var(--text-primary);
+    --dash-muted: var(--text-muted);
+    --dash-shadow: 0 12px 40px -24px color-mix(in srgb, var(--accent-cyan) 18%, transparent);
+    --dash-panel-bg: var(--bg-card);
+    --dash-panel-border: color-mix(in srgb, var(--accent-cyan) 12%, var(--border-color));
+    color: var(--text-primary);
+    background-color: var(--bg-page);
+    background-image:
+      radial-gradient(
+        ellipse 70% 45% at 15% -5%,
+        var(--site-gradient-1),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 55% 40% at 95% 5%,
+        var(--site-gradient-2),
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 50% 35% at 50% 100%,
+        var(--site-gradient-3),
+        transparent 55%
+      );
+  }
+
+  .dark .admin-bg {
+    --dash-shadow: 0 16px 48px -28px rgba(0, 0, 0, 0.55);
+  }
+
+  .dash-sidebar {
+    background: var(--dash-surface);
+    border-right: 1px solid var(--dash-border);
+  }
+
+  .dash-topbar {
+    background: color-mix(in srgb, var(--dash-bg) 88%, transparent);
+    border-bottom: 1px solid var(--dash-border);
+    backdrop-filter: blur(10px);
+  }
+
+  .dash-nav-inner {
+    @apply mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 md:gap-4 md:px-6 md:py-3.5 lg:px-8;
+  }
+
+  .dash-nav-action {
+    @apply rounded-lg px-3 py-2.5 text-sm font-medium transition-colors;
+  }
+
+  .dash-search {
+    background: var(--dash-surface);
+    border: 1px solid var(--dash-border);
+    color: var(--dash-foreground);
+  }
+
+  .dash-search::placeholder {
+    color: var(--dash-muted);
+  }
+
+  .dash-promo-card {
+    background:
+      radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.15), transparent 45%),
+      linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+    box-shadow: var(--dash-shadow);
+  }
+
+  .dashboard-main {
+    @apply w-full px-4 py-5 md:px-6 md:py-8 lg:px-8;
+  }
+
+  .admin-bg .dashboard-panel {
+    background: var(--dash-panel-bg);
+    border: 1px solid var(--dash-panel-border);
+    border-radius: 1.5rem;
+    box-shadow: var(--dash-shadow);
+  }
+
+  .admin-top-card {
+    box-sizing: border-box;
+    height: 360px;
+    overflow: hidden;
+  }
+
+  .dash-stat-cell {
+    border-radius: 1rem;
+    border: 1px solid var(--dash-border);
+    background: color-mix(in srgb, var(--dash-bg) 55%, var(--dash-surface));
+    padding: 0.75rem;
+  }
+
+  .dash-stat-value {
+    @apply mt-[0.285rem] text-[1.6875rem] font-bold tabular-nums leading-none sm:text-4xl;
+    color: var(--dash-foreground);
+  }
+
+  .dash-stat-card {
+    box-sizing: border-box;
+    border-radius: 1.026rem;
+    border: 1px solid var(--dash-border);
+    background: var(--dash-surface);
+    box-shadow: var(--dash-shadow);
+    padding: 0.665rem;
+  }
+
+  .dash-stat-card-lg {
+    min-height: 7.22rem;
+    padding: 1.14rem;
+  }
+
+  .dash-chart-bar {
+    border-radius: 9999px;
+    min-height: 12px;
+  }
+
+  .dash-chart-bar-solid {
+    background: var(--dash-green);
+  }
+
+  .dash-chart-bar-mid {
+    background: color-mix(in srgb, var(--dash-green) 55%, white);
+  }
+
+  .dash-chart-bar-light {
+    background: var(--dash-green-soft);
+    border: 1px solid var(--dash-green-muted);
+  }
+
+  .dash-chart-bar-empty {
+    background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--dash-muted) 18%, transparent),
+      color-mix(in srgb, var(--dash-muted) 18%, transparent) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+    border: 1px solid var(--dash-border);
+  }
+
+  .admin-signup-chart-line {
+    stroke: var(--dash-foreground);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .admin-signup-chart-hatch {
+    stroke: color-mix(in srgb, var(--dash-foreground) 22%, transparent);
+  }
+
+  .admin-signup-chart-grid-h {
+    stroke: color-mix(in srgb, var(--dash-muted) 16%, transparent);
+    stroke-width: 0.35;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .admin-signup-chart-grid-v {
+    stroke: color-mix(in srgb, var(--dash-muted) 22%, transparent);
+    stroke-width: 0.45;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .dash-stat-card-featured {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--dash-border);
+    background: color-mix(in srgb, var(--dash-surface) 82%, transparent);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--dash-shadow);
+    color: var(--dash-foreground);
+  }
+
+  .dash-stat-card-featured .dash-stat-value {
+    color: var(--dash-foreground);
+  }
+
+  .dash-btn-primary {
+    @apply inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold text-on-accent transition-opacity;
+    background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan) 70%, #38bdf8));
+  }
+
+  .dash-btn-primary:hover {
+    opacity: 0.92;
+  }
+
+  .dash-btn-secondary {
+    @apply inline-flex h-11 items-center justify-center rounded-full border px-5 text-sm font-semibold transition-colors;
+    border-color: var(--dash-border);
+    background: var(--dash-surface);
+    color: var(--dash-foreground);
+  }
+
+  .dash-btn-secondary:hover {
+    background: var(--dash-green-soft);
+    border-color: color-mix(in srgb, var(--dash-green) 25%, var(--dash-border));
   }
 
   .glass {
@@ -161,6 +385,52 @@
 
   .glow-magenta {
     box-shadow: 0 0 32px color-mix(in srgb, var(--accent-magenta) 14%, transparent);
+  }
+
+  .glow-magenta-soft {
+    box-shadow: 0 0 22px color-mix(in srgb, var(--accent-magenta) 9%, transparent);
+  }
+
+  .generator-section {
+    background:
+      radial-gradient(
+        ellipse 75% 55% at 12% 45%,
+        color-mix(in srgb, var(--accent-cyan) 8%, transparent),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 75% 55% at 88% 55%,
+        color-mix(in srgb, var(--accent-magenta) 8%, transparent),
+        transparent 72%
+      );
+  }
+
+  .generator-card-cyan {
+    border-color: color-mix(in srgb, var(--accent-cyan) 22%, var(--border-color));
+    background: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--accent-cyan) 9%, var(--bg-card)),
+      var(--bg-card) 52%,
+      color-mix(in srgb, var(--accent-cyan) 4%, var(--bg-card))
+    );
+  }
+
+  .generator-card-magenta {
+    border-color: color-mix(in srgb, var(--accent-magenta) 22%, var(--border-color));
+    background: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--accent-magenta) 9%, var(--bg-card)),
+      var(--bg-card) 52%,
+      color-mix(in srgb, var(--accent-magenta) 4%, var(--bg-card))
+    );
+  }
+
+  .generator-card-cyan:hover {
+    border-color: color-mix(in srgb, var(--accent-cyan) 32%, var(--border-color));
+  }
+
+  .generator-card-magenta:hover {
+    border-color: color-mix(in srgb, var(--accent-magenta) 32%, var(--border-color));
   }
 
   .highlight-entry {

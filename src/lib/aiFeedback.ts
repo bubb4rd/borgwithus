@@ -1,3 +1,5 @@
+import { getActiveUserStorageId, userStorageKey } from "./userStorage";
+
 export type AIFeedback = "like" | "dislike";
 
 export type AIFeedbackEntry = {
@@ -8,11 +10,13 @@ export type AIFeedbackEntry = {
   createdAt: string;
 };
 
-const FEEDBACK_KEY = "borgwithus-ai-feedback";
+const FEEDBACK_BASE = "borgwithus-ai-feedback";
 
 function loadFeedback(): AIFeedbackEntry[] {
+  if (!getActiveUserStorageId()) return [];
+
   try {
-    const raw = localStorage.getItem(FEEDBACK_KEY);
+    const raw = localStorage.getItem(userStorageKey(FEEDBACK_BASE));
     if (!raw) return [];
     return JSON.parse(raw) as AIFeedbackEntry[];
   } catch {
@@ -25,6 +29,8 @@ export function recordAIFeedback(
   prompt: string,
   feedback: AIFeedback
 ) {
+  if (!getActiveUserStorageId()) return;
+
   const entries = loadFeedback();
   entries.unshift({
     id: crypto.randomUUID(),
@@ -33,5 +39,8 @@ export function recordAIFeedback(
     feedback,
     createdAt: new Date().toISOString(),
   });
-  localStorage.setItem(FEEDBACK_KEY, JSON.stringify(entries.slice(0, 200)));
+  localStorage.setItem(
+    userStorageKey(FEEDBACK_BASE),
+    JSON.stringify(entries.slice(0, 200))
+  );
 }

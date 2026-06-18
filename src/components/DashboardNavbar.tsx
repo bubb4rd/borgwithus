@@ -46,7 +46,7 @@ export default function DashboardNavbar() {
       ref={navRef}
       className="sticky top-0 z-50 border-b border-border bg-card/85 backdrop-blur-xl"
     >
-      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 md:px-8">
+      <nav className="dash-nav-inner">
         <Link
           to="/dashboard"
           className="dash-nav-item text-base font-semibold tracking-tight text-foreground transition-colors hover:text-cyan md:text-lg"
@@ -67,7 +67,7 @@ export default function DashboardNavbar() {
           ))}
         </ul>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="hidden shrink-0 items-center gap-2 md:flex md:gap-3">
           <ThemeToggle />
           <UserMenu />
         </div>

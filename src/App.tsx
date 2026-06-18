@@ -7,6 +7,9 @@ import SettingsPage from "./pages/SettingsPage";
 import HistoryPage from "./pages/HistoryPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import SignupConfirmPage from "./pages/SignupConfirmPage";
+import AdminRoute from "./components/AdminRoute";
+import AdminPage from "./pages/AdminPage";
 
 export default function App() {
   return (
@@ -22,8 +25,17 @@ export default function App() {
         <Route path="/dashboard/leaderboard" element={<LeaderboardPage />} />
         <Route path="/dashboard/history" element={<HistoryPage />} />
         <Route path="/dashboard/settings" element={<SettingsPage />} />
+        <Route
+          path="/dashboard/admin"
+          element={
+            <AdminRoute>
+              <AdminPage />
+            </AdminRoute>
+          }
+        />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/signup/confirm" element={<SignupConfirmPage />} />
       </Routes>
     </BrowserRouter>
   );

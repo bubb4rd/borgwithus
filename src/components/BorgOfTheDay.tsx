@@ -1,17 +1,124 @@
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import {
+  formatBorgOfTheDayDate,
+  getBestBorgOfTheDayAllTime,
   getBorgOfTheDayStats,
   likeBorgOfTheDay,
   rateBorgOfTheDay,
 } from "../lib/borgOfTheDay";
+import { getDayKey } from "../lib/leaderboard";
 import StarRating from "./StarRating";
 
-export default function BorgOfTheDay() {
-  const [stats, setStats] = useState(getBorgOfTheDayStats);
+const ADMIN_BOTD_GAP = "gap-[0.45rem]";
+const ADMIN_BOTD_INNER_GAP = "gap-[0.6125rem]";
 
-  const refresh = useCallback(() => setStats(getBorgOfTheDayStats()), []);
+function AdminBotdSection({
+  label,
+  name,
+  meta,
+  date,
+  eyebrow,
+  averageRating,
+  ratingCount,
+  likeCount,
+  isToday = false,
+  compact = false,
+}: {
+  label?: string;
+  name: string;
+  meta?: string;
+  date?: string;
+  eyebrow?: string;
+  averageRating: number;
+  ratingCount: number;
+  likeCount: number;
+  isToday?: boolean;
+  compact?: boolean;
+}) {
+  const dayLabel = isToday ? "today" : "that day";
+  const ratingText =
+    ratingCount > 0
+      ? `${ratingCount} rating${ratingCount === 1 ? "" : "s"} ${dayLabel}`
+      : `No ratings ${dayLabel}`;
+  const likeText =
+    likeCount > 0
+      ? `${likeCount.toLocaleString()} likes ${dayLabel}`
+      : `No likes ${dayLabel}`;
+
+  if (compact) {
+    return (
+      <div className={`flex flex-col ${ADMIN_BOTD_GAP}`}>
+        {eyebrow ? (
+          <p className="m-0 dash-eyebrow leading-tight !text-hazard">{eyebrow}</p>
+        ) : null}
+        <p className="m-0 text-xs leading-tight text-muted sm:text-sm">{date}</p>
+        <h2 className="m-0 truncate text-base font-bold leading-tight text-foreground sm:text-lg">
+          {name}
+        </h2>
+        <div className={`flex items-center ${ADMIN_BOTD_INNER_GAP}`}>
+          <StarRating value={averageRating} size="xl" />
+          <p className="m-0 text-base font-bold tabular-nums leading-none text-foreground">
+            {ratingCount > 0 ? averageRating.toFixed(1) : "—"}
+          </p>
+        </div>
+        <p className="m-0 text-sm font-bold leading-tight text-muted">{ratingText}</p>
+        <p className="m-0 text-sm font-bold leading-tight tabular-nums text-cyan">
+          {likeText}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-muted">
+        {label}
+      </p>
+      <h2 className="mt-[0.2rem] truncate text-sm font-bold text-foreground sm:text-base">
+        {name}
+      </h2>
+      {meta && <p className="mt-[0.2rem] text-[0.6875rem] text-muted">{meta}</p>}
+      <div className="mt-[0.35rem] flex flex-wrap items-center gap-1.5">
+        <StarRating value={averageRating} size="sm" />
+        <p className="text-base font-bold tabular-nums text-foreground">
+          {ratingCount > 0 ? averageRating.toFixed(1) : "—"}
+        </p>
+        <p className="w-full text-xs text-muted">{ratingText}</p>
+      </div>
+      <p className="mt-[0.35rem] tabular-nums text-lg font-bold text-cyan sm:text-xl">
+        {likeCount > 0 ? (
+          <>
+            {likeCount.toLocaleString()}{" "}
+            <span className="text-xs font-semibold sm:text-sm">
+              likes {dayLabel}
+            </span>
+          </>
+        ) : (
+          <span className="text-xs font-semibold sm:text-sm">
+            No likes {dayLabel}
+          </span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+export default function BorgOfTheDay({ admin = false }: { admin?: boolean }) {
+  const { user } = useAuth();
+  const [stats, setStats] = useState(() => getBorgOfTheDayStats());
+  const [best, setBest] = useState(() => getBestBorgOfTheDayAllTime());
+
+  const refresh = useCallback(() => {
+    if (!admin && !user?.id) return;
+    setStats(getBorgOfTheDayStats());
+    if (admin) {
+      setBest(getBestBorgOfTheDayAllTime());
+    }
+  }, [admin, user?.id]);
 
   useEffect(() => {
+    refresh();
     window.addEventListener("leaderboard:update", refresh);
     window.addEventListener("user-data:update", refresh);
     return () => {
@@ -32,40 +139,55 @@ export default function BorgOfTheDay() {
     refresh();
   };
 
+  if (admin) {
+    return (
+      <section className={`dashboard-panel admin-top-card flex flex-col ${ADMIN_BOTD_GAP} p-[0.8rem] sm:p-4`}>
+        <p className="m-0 dash-eyebrow shrink-0 leading-tight text-hazard">
+          BORG of the day
+        </p>
+
+        <div className={`flex min-h-0 flex-1 flex-col justify-start ${ADMIN_BOTD_GAP}`}>
+          <AdminBotdSection
+            compact
+            date={formatBorgOfTheDayDate(getDayKey())}
+            name={stats.name}
+            averageRating={stats.dayStats.averageRating}
+            ratingCount={stats.dayStats.ratingCount}
+            likeCount={stats.dayStats.likeCount}
+            isToday
+          />
+
+          <div
+            className="shrink-0 border-t border-[var(--dash-border)]"
+            aria-hidden
+          />
+          <AdminBotdSection
+            compact
+            eyebrow="BORG of all time"
+            date={formatBorgOfTheDayDate(best.day)}
+            name={best.name}
+            averageRating={best.averageRating}
+            ratingCount={best.ratingCount}
+            likeCount={best.likeCount}
+          />
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="dashboard-panel p-3.5 sm:p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-hazard">
-        BORG of the day
-      </p>
-      <h2 className="mt-0.5 truncate text-lg font-bold text-foreground">
+    <section className="dashboard-panel flex h-full flex-col p-5">
+      <p className="dash-eyebrow text-hazard">BORG of the day</p>
+      <h2 className="mt-1 truncate text-lg font-bold text-foreground sm:text-xl">
         {stats.name}
       </h2>
+
       <p className="mt-1.5 text-sm text-muted">
         Like and rate today&apos;s featured name on the leaderboard.
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-4">
-        {stats.liked ? (
-          <span
-            aria-label="Liked"
-            className="inline-flex h-10 items-center gap-2 rounded-full border border-cyan/30 bg-cyan/10 px-4 text-base font-semibold text-cyan"
-          >
-            <svg
-              width={18}
-              height={18}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M20 6 9 17l-5-5" />
-            </svg>
-            Liked
-          </span>
-        ) : (
+        {!stats.liked && (
           <button
             type="button"
             onClick={handleLike}
@@ -92,8 +214,11 @@ export default function BorgOfTheDay() {
         />
       </div>
 
-      <p className="mt-3 text-sm tabular-nums text-subtle">
-        {stats.likeCount.toLocaleString()} community likes
+      <p className="mt-auto pt-3 text-xl font-bold tabular-nums text-cyan sm:text-2xl">
+        {stats.likeCount.toLocaleString()}{" "}
+        <span className="text-base font-semibold sm:text-lg">
+          community likes
+        </span>
       </p>
     </section>
   );

@@ -9,9 +9,10 @@ export const inputClass =
 
 type AuthLayoutProps = {
   children: ReactNode;
+  showFooter?: boolean;
 };
 
-export default function AuthLayout({ children }: AuthLayoutProps) {
+export default function AuthLayout({ children, showFooter = true }: AuthLayoutProps) {
   const pageRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
@@ -45,11 +46,13 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
       <div className="flex min-h-screen items-center justify-center px-4 py-28">
         <div className="auth-card glass w-full max-w-md rounded-3xl p-6 sm:p-8">
           {children}
-          <p className="mt-6 text-center text-sm text-subtle">
-            <Link to="/" className="text-cyan transition-colors hover:underline">
-              ← Back to home
-            </Link>
-          </p>
+          {showFooter && (
+            <p className="mt-6 text-center text-sm text-subtle">
+              <Link to="/" className="text-cyan transition-colors hover:underline">
+                ← Back to home
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import names from "../data/names.json";
+import { getPoolForKind } from "./borgCatalog";
 import { pickRandom } from "./generateName";
 import type { AiTone } from "../context/AuthContext";
 
@@ -6,7 +6,7 @@ const suffixes = ["borg", "Borginator", "borg Supreme", "borg Deluxe", "borg XL"
 
 export function generateAIName(prompt: string, tone: AiTone = "funny"): string {
   const trimmed = prompt.trim();
-  const seed = pickRandom(names.borg);
+  const seed = pickRandom(getPoolForKind("borg"));
 
   if (!trimmed) return seed;
 

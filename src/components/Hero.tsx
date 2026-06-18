@@ -67,8 +67,8 @@ export default function Hero() {
         .from(".hero-title", { y: 40, ...entrance, duration: 0.8 }, "-=0.2")
         .from(".hero-sub", { y: 24, ...entrance, duration: 0.7 }, "-=0.45")
         .from(
-          ".hero-cta-row",
-          { y: 20, ...entrance, clearProps: "transform" },
+          ".hero-cta-row > *",
+          { y: 20, ...entrance, stagger: 0.08 },
           "-=0.35"
         )
         .from(
@@ -88,7 +88,7 @@ export default function Hero() {
     >
       <div className="mx-auto w-full max-w-6xl">
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
-          <div className="max-w-3xl">
+          <div className="min-w-0 max-w-3xl">
             <p className="hero-badge mb-6 inline-flex items-center gap-2 rounded-full border border-hazard/25 bg-hazard/5 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-muted">
             <svg
               className="h-3.5 w-3.5 shrink-0 text-hazard"
@@ -116,7 +116,7 @@ export default function Hero() {
           <p className="hero-sub mt-6 max-w-xl text-lg text-muted md:text-xl">
             Take your drinking to another level with a BORG!
           </p>
-          <div className="hero-cta-row mt-10 flex items-center gap-3 sm:gap-4">
+          <div className="hero-cta-row mt-10 flex max-w-full flex-wrap items-center gap-3 sm:gap-4">
             <Link
               to={user ? "/dashboard" : "/signup"}
               className="hero-btn hero-btn-text border-transparent bg-gradient-to-r from-cyan to-sky-400 font-semibold text-on-accent transition-opacity hover:opacity-90"

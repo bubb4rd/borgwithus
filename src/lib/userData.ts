@@ -1,4 +1,8 @@
 import { recordRating } from "./leaderboard";
+import {
+  getActiveUserStorageId,
+  userStorageKey,
+} from "./userStorage";
 
 export type RollType = "borg" | "mio" | "ai";
 
@@ -24,9 +28,10 @@ export type RecentRoll = {
   rolledAt: string;
 };
 
-const SAVED_LIKES_KEY = "borgwithus-saved-likes";
-const LEGACY_SAVED_PICKS_KEY = "borgwithus-saved-picks";
-const RECENT_ROLLS_KEY = "borgwithus-recent-rolls";
+const SAVED_LIKES_BASE = "borgwithus-saved-likes";
+const LEGACY_SAVED_PICKS_BASE = "borgwithus-saved-picks";
+const RECENT_ROLLS_BASE = "borgwithus-recent-rolls";
+const LIKES_CAST_BASE = "borgwithus-likes-cast";
 export const PREVIEW_LIMIT = 5;
 const MAX_STORED_ROLLS = 100;
 
@@ -34,9 +39,11 @@ function notify() {
   window.dispatchEvent(new Event("user-data:update"));
 }
 
-function loadJson<T>(key: string, fallback: T): T {
+function loadJson<T>(baseKey: string, fallback: T): T {
+  if (!getActiveUserStorageId()) return fallback;
+
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(userStorageKey(baseKey));
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
   } catch {
@@ -44,12 +51,17 @@ function loadJson<T>(key: string, fallback: T): T {
   }
 }
 
+function saveJson<T>(baseKey: string, value: T) {
+  if (!getActiveUserStorageId()) return;
+  localStorage.setItem(userStorageKey(baseKey), JSON.stringify(value));
+}
+
 function uid() {
   return crypto.randomUUID();
 }
 
 function migrateSavedLikes(): SavedLike[] {
-  const legacy = loadJson<LegacySavedLike[]>(LEGACY_SAVED_PICKS_KEY, []);
+  const legacy = loadJson<LegacySavedLike[]>(LEGACY_SAVED_PICKS_BASE, []);
   if (legacy.length === 0) return [];
 
   const migrated = legacy.map((entry) => ({
@@ -58,12 +70,21 @@ function migrateSavedLikes(): SavedLike[] {
     likedAt: entry.likedAt ?? entry.pickedAt ?? new Date().toISOString(),
     rating: entry.rating,
   }));
-  localStorage.setItem(SAVED_LIKES_KEY, JSON.stringify(migrated));
+  saveJson(SAVED_LIKES_BASE, migrated);
   return migrated;
 }
 
+export function incrementLikesCast() {
+  const current = loadJson<number>(LIKES_CAST_BASE, 0);
+  saveJson(LIKES_CAST_BASE, current + 1);
+}
+
+export function getLikesCastCount() {
+  return loadJson<number>(LIKES_CAST_BASE, 0);
+}
+
 export function getSavedLikes(): SavedLike[] {
-  const likes = loadJson<SavedLike[]>(SAVED_LIKES_KEY, []);
+  const likes = loadJson<SavedLike[]>(SAVED_LIKES_BASE, []);
   if (likes.length > 0) return likes;
   return migrateSavedLikes();
 }
@@ -75,7 +96,8 @@ export function addSavedLike(name: string) {
     name,
     likedAt: new Date().toISOString(),
   });
-  localStorage.setItem(SAVED_LIKES_KEY, JSON.stringify(likes));
+  saveJson(SAVED_LIKES_BASE, likes);
+  incrementLikesCast();
   notify();
 }
 
@@ -83,7 +105,7 @@ export function rateSavedLike(id: string, rating: number) {
   const likes = getSavedLikes().map((like) =>
     like.id === id ? { ...like, rating } : like
   );
-  localStorage.setItem(SAVED_LIKES_KEY, JSON.stringify(likes));
+  saveJson(SAVED_LIKES_BASE, likes);
 
   const like = likes.find((entry) => entry.id === id);
   if (like) recordRating(like.name, rating);
@@ -92,12 +114,12 @@ export function rateSavedLike(id: string, rating: number) {
 
 export function removeSavedLike(id: string) {
   const likes = getSavedLikes().filter((like) => like.id !== id);
-  localStorage.setItem(SAVED_LIKES_KEY, JSON.stringify(likes));
+  saveJson(SAVED_LIKES_BASE, likes);
   notify();
 }
 
 export function getRecentRolls(): RecentRoll[] {
-  return loadJson<RecentRoll[]>(RECENT_ROLLS_KEY, []);
+  return loadJson<RecentRoll[]>(RECENT_ROLLS_BASE, []);
 }
 
 export function recordRoll(type: RollType, name: string) {
@@ -110,10 +132,7 @@ export function recordRoll(type: RollType, name: string) {
     type,
     rolledAt: new Date().toISOString(),
   });
-  localStorage.setItem(
-    RECENT_ROLLS_KEY,
-    JSON.stringify(rolls.slice(0, MAX_STORED_ROLLS))
-  );
+  saveJson(RECENT_ROLLS_BASE, rolls.slice(0, MAX_STORED_ROLLS));
   notify();
 }
 
@@ -130,6 +149,6 @@ export function formatRelativeTime(iso: string) {
 
 export const ROLL_LABELS: Record<RollType, string> = {
   borg: "BORG",
-  mio: "MIO",
+  mio: "Mio",
   ai: "AI",
 };

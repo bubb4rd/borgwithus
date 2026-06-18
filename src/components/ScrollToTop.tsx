@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export default function ScrollToTop() {
+export default function ScrollToTop({ className = "" }: { className?: string }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function ScrollToTop() {
       type="button"
       aria-label="Go to top"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className="glass fixed bottom-6 right-6 z-50 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-cyan transition-colors hover:border-cyan/40 hover:bg-cyan/10"
+      className={`glass fixed bottom-6 right-6 z-50 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-cyan transition-colors hover:border-cyan/40 hover:bg-cyan/10 ${className}`}
     >
       <svg
         width="18"

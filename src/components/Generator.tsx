@@ -69,10 +69,17 @@ function GeneratorCard({
   const [pendingName, setPendingName] = useState<string | null>(null);
   const [likedName, setLikedName] = useState<string | null>(null);
 
-  const accentClasses =
-    accent === "cyan"
-      ? "border-cyan/25 glow-cyan hover:border-cyan/50"
-      : "border-magenta/25 glow-magenta hover:border-magenta/50";
+  const accentClasses = compact
+    ? accent === "cyan"
+      ? "border-cyan/25 hover:border-cyan/50"
+      : "border-magenta/25 hover:border-magenta/50"
+    : accent === "cyan"
+      ? "generator-card-cyan"
+      : "generator-card-magenta";
+
+  const cardSurfaceClasses = compact
+    ? "dashboard-panel p-4"
+    : "rounded-3xl border p-6 backdrop-blur-sm md:p-8";
 
   const buttonClasses =
     accent === "cyan"
@@ -135,9 +142,7 @@ function GeneratorCard({
   return (
     <div
       ref={cardRef}
-      className={`dashboard-panel flex flex-col transition-colors ${
-        compact ? "p-4" : "glass rounded-3xl border p-6 md:p-8"
-      } ${accentClasses}`}
+      className={`flex flex-col transition-colors ${cardSurfaceClasses} ${accentClasses}`}
     >
       <p
         className={`text-xs font-semibold uppercase tracking-[0.25em] text-subtle ${
@@ -149,15 +154,15 @@ function GeneratorCard({
       <div
         className={`flex gap-3 rounded-2xl border border-border bg-elevated px-4 ${
           compact
-            ? "mb-4 min-h-[5.5rem] py-2.5"
-            : "mb-8 min-h-[7.5rem] px-5 py-4"
+            ? "mb-4 min-h-[4.5rem] py-2"
+            : "mb-6 min-h-[5.5rem] py-3"
         }`}
       >
         <div className="flex min-w-0 flex-1 items-center">
           <p
             ref={nameRef}
             className={`font-semibold leading-tight text-subtle ${
-              compact ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"
+              compact ? "text-lg md:text-xl" : "text-xl md:text-2xl"
             }`}
           >
             {placeholder}
@@ -278,7 +283,7 @@ export default function Generator({
     <section
       id="generator"
       ref={sectionRef}
-      className={embedded ? "" : "px-4 py-24 md:px-8"}
+      className={embedded ? "" : "generator-section px-4 py-24 md:px-8"}
     >
       <div className={embedded ? "" : "mx-auto max-w-6xl"}>
         {!embedded && (
@@ -324,8 +329,8 @@ export default function Generator({
           </div>
           <div data-reveal>
             <GeneratorCard
-              label="MIO"
-              placeholder="Generate your mio!"
+              label="Mio"
+              placeholder="Generate your Mio!"
               accent="magenta"
               rollType="mio"
               onGenerate={generateMioName}
