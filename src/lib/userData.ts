@@ -1,6 +1,15 @@
 import { recordRating } from "./leaderboard";
 import {
+  deleteSavedLikeFromSupabase,
+  fetchUserDataFromSupabase,
+  pushUserDataToSupabase,
+  syncRollToSupabase,
+  syncSavedLikeToSupabase,
+} from "./userDataSupabase";
+import { isSupabaseConfigured } from "./supabase";
+import {
   getActiveUserStorageId,
+  notifyUserDataChanged,
   userStorageKey,
 } from "./userStorage";
 
@@ -36,7 +45,7 @@ export const PREVIEW_LIMIT = 5;
 const MAX_STORED_ROLLS = 100;
 
 function notify() {
-  window.dispatchEvent(new Event("user-data:update"));
+  notifyUserDataChanged();
 }
 
 function loadJson<T>(baseKey: string, fallback: T): T {
@@ -74,6 +83,27 @@ function migrateSavedLikes(): SavedLike[] {
   return migrated;
 }
 
+export async function hydrateUserDataFromSupabase(userId: string) {
+  if (!isSupabaseConfigured) return;
+
+  const remote = await fetchUserDataFromSupabase(userId);
+  if (!remote) return;
+
+  const localLikes = getSavedLikes();
+  const localRolls = getRecentRolls();
+
+  if (remote.likes.length > 0 || remote.rolls.length > 0) {
+    saveJson(SAVED_LIKES_BASE, remote.likes);
+    saveJson(RECENT_ROLLS_BASE, remote.rolls.slice(0, MAX_STORED_ROLLS));
+    notify();
+    return;
+  }
+
+  if (localLikes.length > 0 || localRolls.length > 0) {
+    await pushUserDataToSupabase(userId, localLikes, localRolls);
+  }
+}
+
 export function incrementLikesCast() {
   const current = loadJson<number>(LIKES_CAST_BASE, 0);
   saveJson(LIKES_CAST_BASE, current + 1);
@@ -90,31 +120,45 @@ export function getSavedLikes(): SavedLike[] {
 }
 
 export function addSavedLike(name: string) {
+  const userId = getActiveUserStorageId();
+  if (!userId) return;
+
   const likes = getSavedLikes();
-  likes.unshift({
+  if (likes.some((entry) => entry.name === name)) return;
+
+  const like: SavedLike = {
     id: uid(),
     name,
     likedAt: new Date().toISOString(),
-  });
+  };
+  likes.unshift(like);
   saveJson(SAVED_LIKES_BASE, likes);
   incrementLikesCast();
+  void syncSavedLikeToSupabase(userId, like);
   notify();
 }
 
 export function rateSavedLike(id: string, rating: number) {
+  const userId = getActiveUserStorageId();
+  if (!userId) return;
+
   const likes = getSavedLikes().map((like) =>
     like.id === id ? { ...like, rating } : like
   );
   saveJson(SAVED_LIKES_BASE, likes);
 
   const like = likes.find((entry) => entry.id === id);
-  if (like) recordRating(like.name, rating);
+  if (like) {
+    recordRating(like.name, rating);
+    void syncSavedLikeToSupabase(userId, like);
+  }
   notify();
 }
 
 export function removeSavedLike(id: string) {
   const likes = getSavedLikes().filter((like) => like.id !== id);
   saveJson(SAVED_LIKES_BASE, likes);
+  void deleteSavedLikeFromSupabase(id);
   notify();
 }
 
@@ -123,16 +167,21 @@ export function getRecentRolls(): RecentRoll[] {
 }
 
 export function recordRoll(type: RollType, name: string) {
+  const userId = getActiveUserStorageId();
+  if (!userId) return;
+
   const rolls = getRecentRolls().filter(
     (roll) => !(roll.type === type && roll.name === name)
   );
-  rolls.unshift({
+  const roll: RecentRoll = {
     id: uid(),
     name,
     type,
     rolledAt: new Date().toISOString(),
-  });
+  };
+  rolls.unshift(roll);
   saveJson(RECENT_ROLLS_BASE, rolls.slice(0, MAX_STORED_ROLLS));
+  void syncRollToSupabase(userId, roll);
   notify();
 }
 

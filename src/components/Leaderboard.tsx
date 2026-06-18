@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import ScrollHintList from "./ScrollHintList";
 import {
   getTopEntries,
+  getTopEntriesAsync,
   METRIC_LABELS,
   type LeaderboardEntry,
   type LeaderboardMetric,
@@ -172,13 +173,20 @@ export default function Leaderboard({
   const podiumRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setEntries(getTopEntries(metric, LEADERBOARD_TOTAL));
-  }, [metric]);
+    let active = true;
 
-  useEffect(() => {
-    const refresh = () => setEntries(getTopEntries(metric, LEADERBOARD_TOTAL));
+    const load = async () => {
+      const next = await getTopEntriesAsync(metric, LEADERBOARD_TOTAL);
+      if (active) setEntries(next);
+    };
+
+    void load();
+    const refresh = () => void load();
     window.addEventListener("leaderboard:update", refresh);
-    return () => window.removeEventListener("leaderboard:update", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("leaderboard:update", refresh);
+    };
   }, [metric]);
 
   useGSAP(

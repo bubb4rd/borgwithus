@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   getTopEntries,
+  getTopEntriesAsync,
   type LeaderboardEntry,
   type LeaderboardMetric,
 } from "../lib/leaderboard";
@@ -148,10 +149,20 @@ export default function LeaderboardCallout() {
   );
 
   useEffect(() => {
-    const refresh = () => setEntries(getTopEntries(metric, FETCH_COUNT));
-    refresh();
+    let active = true;
+
+    const load = async () => {
+      const next = await getTopEntriesAsync(metric, FETCH_COUNT);
+      if (active) setEntries(next);
+    };
+
+    void load();
+    const refresh = () => void load();
     window.addEventListener("leaderboard:update", refresh);
-    return () => window.removeEventListener("leaderboard:update", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("leaderboard:update", refresh);
+    };
   }, [metric]);
 
   const visibleEntries = entries.slice(0, VISIBLE_COUNT);

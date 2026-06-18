@@ -1,4 +1,10 @@
 import names from "../data/names.json";
+import {
+  fetchLikesLeaderboardFromSupabase,
+  fetchRatingsLeaderboardFromSupabase,
+  syncLikeToSupabase,
+  syncRatingToSupabase,
+} from "./leaderboardSupabase";
 
 const LIKES_KEY = "borgwithus-likes";
 const LEGACY_PICKS_KEY = "borgwithus-picks";
@@ -67,6 +73,7 @@ function notifyLeaderboard() {
 
 export function recordLike(name: string) {
   bumpCount(LIKES_KEY, name);
+  void syncLikeToSupabase(name);
   notifyLeaderboard();
   window.dispatchEvent(new Event("user-data:update"));
 }
@@ -114,6 +121,7 @@ export function recordRating(name: string, stars: number) {
     count: current.count + 1,
   };
   saveRatings(ratings);
+  void syncRatingToSupabase(name, stars);
   notifyLeaderboard();
   window.dispatchEvent(new Event("user-data:update"));
 }
@@ -126,6 +134,34 @@ function topFromCounts(
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([name, value]) => ({ name, value }));
+}
+
+export async function getTopEntriesAsync(
+  metric: LeaderboardMetric,
+  limit = 10
+): Promise<LeaderboardEntry[]> {
+  if (metric === "likes") {
+    const remote = await fetchLikesLeaderboardFromSupabase(limit);
+    if (remote?.length) return remote;
+    return topFromCounts(new Map(Object.entries(loadLikesExtra())), limit);
+  }
+
+  const remote = await fetchRatingsLeaderboardFromSupabase(limit);
+  if (remote?.length) return remote;
+
+  return Object.entries(loadRatings())
+    .map(([name, { total, count }]) => ({
+      name,
+      avg: count ? total / count : 0,
+      count,
+    }))
+    .sort((a, b) => b.avg - a.avg)
+    .slice(0, limit)
+    .map(({ name, avg, count }) => ({
+      name,
+      value: avg,
+      detail: `${count} ratings`,
+    }));
 }
 
 export function getTopEntries(

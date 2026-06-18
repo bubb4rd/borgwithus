@@ -1,4 +1,5 @@
 import { getCatalogCounts } from "./borgCatalog";
+import { fetchCommunityStatsFromSupabase } from "./leaderboardSupabase";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 const LIKES_KEY = "borgwithus-likes";
@@ -276,10 +277,24 @@ export async function fetchAdminProfiles(): Promise<{
 
 export async function loadAdminSnapshot(): Promise<AdminSnapshot> {
   const base = buildAdminSnapshot();
-  const { profiles, error, accessHint } = await fetchAdminProfiles();
+  const [{ profiles, error, accessHint }, remoteCommunity] = await Promise.all([
+    fetchAdminProfiles(),
+    fetchCommunityStatsFromSupabase(),
+  ]);
+
+  const community = remoteCommunity
+    ? {
+        totalLikes: remoteCommunity.likes.reduce((sum, row) => sum + row.likes, 0),
+        likedNames: remoteCommunity.likes.length,
+        ratedNames: remoteCommunity.ratings.length,
+        likes: remoteCommunity.likes,
+        ratings: remoteCommunity.ratings,
+      }
+    : base.community;
 
   return {
     ...base,
+    community,
     profiles,
     profileError: error,
     profileAccessHint: accessHint,

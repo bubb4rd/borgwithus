@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getTopEntries, type LeaderboardEntry } from "../lib/leaderboard";
+import { getTopEntriesAsync, type LeaderboardEntry } from "../lib/leaderboard";
 
 const ICONS = ["🍺", "🎲", "⭐", "🔥", "🧪"] as const;
 
@@ -8,10 +8,20 @@ export default function DashboardTopBorgsList() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
-    const refresh = () => setEntries(getTopEntries("likes", 5));
-    refresh();
+    let active = true;
+
+    const load = async () => {
+      const next = await getTopEntriesAsync("likes", 5);
+      if (active) setEntries(next);
+    };
+
+    void load();
+    const refresh = () => void load();
     window.addEventListener("leaderboard:update", refresh);
-    return () => window.removeEventListener("leaderboard:update", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("leaderboard:update", refresh);
+    };
   }, []);
 
   return (

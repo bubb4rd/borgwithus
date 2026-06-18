@@ -1,13 +1,23 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { getSavedLikes, getRecentRolls } from "../lib/userData";
 
 export default function DashboardRollProgress() {
+  const { user } = useAuth();
   const [percent, setPercent] = useState(0);
   const [saved, setSaved] = useState(0);
   const [rated, setRated] = useState(0);
   const [rolls, setRolls] = useState(0);
 
   useEffect(() => {
+    if (!user?.id) {
+      setPercent(0);
+      setSaved(0);
+      setRated(0);
+      setRolls(0);
+      return;
+    }
+
     const refresh = () => {
       const likes = getSavedLikes();
       const ratedCount = likes.filter((l) => l.rating).length;
@@ -20,7 +30,7 @@ export default function DashboardRollProgress() {
     refresh();
     window.addEventListener("user-data:update", refresh);
     return () => window.removeEventListener("user-data:update", refresh);
-  }, []);
+  }, [user?.id]);
 
   const dash = 251;
   const offset = dash - (dash * percent) / 100;

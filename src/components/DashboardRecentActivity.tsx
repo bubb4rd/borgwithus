@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   formatRelativeTime,
   getRecentRolls,
@@ -14,14 +15,20 @@ const STATUS_STYLES = {
 } as const;
 
 export default function DashboardRecentActivity() {
+  const { user } = useAuth();
   const [rolls, setRolls] = useState<RecentRoll[]>([]);
 
   useEffect(() => {
+    if (!user?.id) {
+      setRolls([]);
+      return;
+    }
+
     const refresh = () => setRolls(getRecentRolls().slice(0, 4));
     refresh();
     window.addEventListener("user-data:update", refresh);
     return () => window.removeEventListener("user-data:update", refresh);
-  }, []);
+  }, [user?.id]);
 
   return (
     <section className="dashboard-panel p-5">

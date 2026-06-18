@@ -15,6 +15,7 @@ import {
 import { isAdminEmail } from "../lib/adminAccess";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase";
 import { setPendingEmailVerification } from "../lib/pendingVerification";
+import { hydrateUserDataFromSupabase } from "../lib/userData";
 import { bindUserStorage } from "../lib/userStorage";
 
 export type AiTone = "funny" | "clean";
@@ -84,9 +85,16 @@ function saveMockUser(user: User | null) {
   else localStorage.removeItem(MOCK_STORAGE_KEY);
 }
 
-function syncAuthUser(setUser: (user: User | null) => void, next: User | null) {
+async function applyAuthUser(
+  setUser: (user: User | null) => void,
+  next: User | null
+) {
   bindUserStorage(next?.id ?? null);
   setUser(next);
+
+  if (next?.id && isSupabaseConfigured) {
+    await hydrateUserDataFromSupabase(next.id);
+  }
 }
 
 async function resolveAuthUser(
@@ -105,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      syncAuthUser(setUser, loadMockUser());
+      void applyAuthUser(setUser, loadMockUser());
       setLoading(false);
       return;
     }
@@ -119,13 +127,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const authUser = data.session?.user;
       if (!authUser) {
-        syncAuthUser(setUser, null);
+        void applyAuthUser(setUser, null);
         setLoading(false);
         return;
       }
 
       const profile = await resolveAuthUser(authUser);
-      if (active) syncAuthUser(setUser, profile);
+      if (active) await applyAuthUser(setUser, profile);
       if (active) setLoading(false);
     };
 
@@ -137,15 +145,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
 
       if (!session?.user) {
-        syncAuthUser(setUser, null);
+        void applyAuthUser(setUser, null);
         setLoading(false);
         return;
       }
 
       setLoading(true);
       void resolveAuthUser(session.user)
-        .then((profile) => {
-          if (active) syncAuthUser(setUser, profile);
+        .then(async (profile) => {
+          if (active) await applyAuthUser(setUser, profile);
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -162,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       const existing = loadMockUser();
       if (existing?.email === email) {
-        syncAuthUser(setUser, existing);
+        await applyAuthUser(setUser, existing);
         return;
       }
 
@@ -176,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         settings: DEFAULT_SETTINGS,
       };
       saveMockUser(next);
-      syncAuthUser(setUser, next);
+      await applyAuthUser(setUser, next);
       return;
     }
 
@@ -188,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(authErrorMessage(error));
 
     const profile = await resolveAuthUser(data.user);
-    syncAuthUser(setUser, profile);
+    await applyAuthUser(setUser, profile);
   }, []);
 
   const signup = useCallback(
@@ -203,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           settings: DEFAULT_SETTINGS,
         };
         saveMockUser(next);
-        syncAuthUser(setUser, next);
+        await applyAuthUser(setUser, next);
         return { status: "session" };
       }
 
@@ -222,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const profile = await resolveAuthUser(data.user);
-      syncAuthUser(setUser, profile);
+      await applyAuthUser(setUser, profile);
       return { status: "session" };
     },
     []
@@ -231,14 +239,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     if (!isSupabaseConfigured) {
       saveMockUser(null);
-      syncAuthUser(setUser, null);
+      await applyAuthUser(setUser, null);
       return;
     }
 
     const supabase = getSupabase();
     const { error } = await supabase.auth.signOut();
     if (error) throw new Error(authErrorMessage(error));
-    syncAuthUser(setUser, null);
+    await applyAuthUser(setUser, null);
   }, []);
 
   const updateUser = useCallback(

@@ -25,8 +25,13 @@ export default function AdminPage() {
 
   useEffect(() => {
     const onCatalogUpdate = () => void refresh();
+    const onLeaderboardUpdate = () => void refresh();
     window.addEventListener(catalogUpdateEventName(), onCatalogUpdate);
-    return () => window.removeEventListener(catalogUpdateEventName(), onCatalogUpdate);
+    window.addEventListener("leaderboard:update", onLeaderboardUpdate);
+    return () => {
+      window.removeEventListener(catalogUpdateEventName(), onCatalogUpdate);
+      window.removeEventListener("leaderboard:update", onLeaderboardUpdate);
+    };
   }, [refresh]);
 
   return (

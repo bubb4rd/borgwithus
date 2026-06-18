@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   getWeeklyRollBuckets,
   maxBucketCount,
@@ -14,14 +15,20 @@ function barTone(count: number, max: number) {
 }
 
 export default function DashboardActivityChart() {
+  const { user } = useAuth();
   const [buckets, setBuckets] = useState<DayBucket[]>([]);
 
   useEffect(() => {
+    if (!user?.id) {
+      setBuckets([]);
+      return;
+    }
+
     const refresh = () => setBuckets(getWeeklyRollBuckets());
     refresh();
     window.addEventListener("user-data:update", refresh);
     return () => window.removeEventListener("user-data:update", refresh);
-  }, []);
+  }, [user?.id]);
 
   const max = maxBucketCount(buckets);
 
