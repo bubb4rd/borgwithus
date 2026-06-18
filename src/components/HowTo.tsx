@@ -6,18 +6,23 @@ import { useReducedMotion } from "../hooks/useReducedMotion";
 const steps = [
   {
     id: 1,
-    title: "Fill the jar",
-    subtitle: "Fill a gallon plastic jar halfway.",
+    title: "Pick your BORG",
+    subtitle: "Roll a BORG with our generators, or pick a saved favorite.",
   },
   {
     id: 2,
+    title: "Fill the jug",
+    subtitle: "Fill a gallon plastic jar halfway, or drink half, we don't care.",
+  },
+  {
+    id: 3,
     title: "Add vodka",
     subtitle:
       "Pour in a small handle (750 mL) of a vodka of your choice.",
   },
   {
-    id: 3,
-    title: "Add Mio",
+    id: 4,
+    title: "Add your flavor",
     subtitle: "Pour in 2 packets of Mio (1.62 oz each)",
   },
 ];
@@ -92,7 +97,7 @@ export default function HowTo() {
   const videoRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
-  const showNextHint = activeIndex < 2 && !reducedMotion;
+  const showNextHint = activeIndex < steps.length - 1 && !reducedMotion;
 
   useGSAP(
     () => {
@@ -126,7 +131,7 @@ export default function HowTo() {
       <div className="mx-auto max-w-6xl">
         <div data-reveal className="mb-12 max-w-2xl">
           <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-cyan">
-            Recipe
+            The recipe
           </p>
           <h2 className="text-4xl font-bold text-foreground md:text-5xl">
             How to borg
@@ -136,9 +141,9 @@ export default function HowTo() {
         <div
           ref={sectionRef}
           data-reveal
-          className="glass flex h-[55vh] min-h-[352px] flex-col overflow-hidden rounded-3xl sm:flex-row"
+          className="flex h-[55vh] min-h-[352px] flex-col overflow-hidden sm:flex-row"
         >
-          <div className="min-h-0 shrink-0 p-4 sm:h-full sm:w-[62%] sm:p-5 md:w-[65%]">
+          <div className="min-h-0 shrink-0 sm:h-full sm:w-[62%] md:w-[65%]">
             <div ref={videoRef} className="h-full w-full min-h-[180px]">
               <VideoPlaceholder stepId={activeStep.id} />
             </div>

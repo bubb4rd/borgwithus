@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import ThemeToggle from "./ThemeToggle";
 
 type HamburgerButtonProps = {
@@ -59,7 +60,15 @@ export function MobileNavDrawer({
   children,
   footer,
 }: MobileNavDrawerProps) {
-  return (
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="md:hidden">
       <div
         className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-300 motion-reduce:transition-none ${
@@ -76,27 +85,27 @@ export function MobileNavDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        aria-hidden={!open}
         inert={open ? undefined : true}
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[min(100%,18rem)] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none ${
+        className={`fixed right-0 top-0 z-[70] flex h-dvh w-[min(100%,18rem)] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="text-sm font-semibold text-foreground">{title}</p>
-          <HamburgerButton
-            open
-            onClick={onClose}
-            controlsId={id}
-          />
+          <HamburgerButton open onClick={onClose} controlsId={id} />
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3">{children}</nav>
+        <nav className="flex-1 overflow-y-auto overscroll-contain p-3">
+          {children}
+        </nav>
 
-        <div className="relative flex items-center justify-between gap-3 overflow-visible border-t border-border p-4">
+        <div className="relative flex shrink-0 items-center justify-between gap-3 overflow-visible border-t border-border p-4">
           <ThemeToggle />
           {footer}
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body
   );
 }
