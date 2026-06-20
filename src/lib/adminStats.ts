@@ -1,6 +1,9 @@
 import { getCatalogCounts } from "./borgCatalog";
+import { fetchAdminAiGenerations } from "./adminAiGenerations";
 import { fetchCommunityStatsFromSupabase } from "./leaderboardSupabase";
+import { hydrateSharedBorgData, setCommunitySyncRemote } from "./sharedBorgData";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
+import type { RecentRoll, RollType } from "./userData";
 
 const LIKES_KEY = "borgwithus-likes";
 const LEGACY_PICKS_KEY = "borgwithus-picks";
@@ -16,6 +19,13 @@ const USER_KEY_PREFIXES = [
 export type AdminProfile = {
   id: string;
   member_since: string;
+};
+
+export type AdminRoll = {
+  id: string;
+  name: string;
+  roll_type: RollType;
+  rolled_at: string;
 };
 
 export type AdminLikeRow = {
@@ -44,6 +54,11 @@ export type AdminSnapshot = {
   profiles: AdminProfile[];
   profileError: string | null;
   profileAccessHint: string | null;
+  rolls: AdminRoll[];
+  rollsError: string | null;
+  aiGenerations: {
+    total: number;
+  };
 };
 
 export type SignupBucket = {
@@ -52,13 +67,32 @@ export type SignupBucket = {
   dayKey: string;
 };
 
-const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
+export type ChartDayBucket = SignupBucket;
 
 export const SIGNUP_CHART_DAYS = 7;
 
-function parseMemberSince(memberSince: string) {
-  const parsed = new Date(memberSince);
+function getWeekdayShortLabel(date: Date) {
+  return date.toLocaleDateString(undefined, { weekday: "short" });
+}
+
+function getDailyBuckets(
+  items: Array<{ timestamp: string }>,
+  days = SIGNUP_CHART_DAYS,
+): ChartDayBucket[] {
+  return getSignupWindowDays(days).map((date) => ({
+    label: getWeekdayShortLabel(date),
+    count: items.filter((item) => isItemOnLocalDay(item.timestamp, date)).length,
+    dayKey: getLocalDayKey(date),
+  }));
+}
+
+function parseTimestamp(value: string) {
+  const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseMemberSince(memberSince: string) {
+  return parseTimestamp(memberSince);
 }
 
 function getLocalDayStart(date = new Date()) {
@@ -86,13 +120,17 @@ function getSignupWindowDays(days = SIGNUP_CHART_DAYS) {
   return windowDays;
 }
 
-function isProfileOnLocalDay(profile: AdminProfile, dayStart: Date) {
-  const joined = parseMemberSince(profile.member_since);
-  if (!joined) return false;
+function isItemOnLocalDay(timestamp: string, dayStart: Date) {
+  const parsed = parseTimestamp(timestamp);
+  if (!parsed) return false;
 
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
-  return joined >= dayStart && joined < dayEnd;
+  return parsed >= dayStart && parsed < dayEnd;
+}
+
+function isProfileOnLocalDay(profile: AdminProfile, dayStart: Date) {
+  return isItemOnLocalDay(profile.member_since, dayStart);
 }
 
 export function isProfileInSignupWindow(
@@ -122,20 +160,163 @@ export function formatMemberSince(memberSince: string) {
   });
 }
 
+export function formatCompactRollCount(value: number) {
+  if (value < 1000) return value.toLocaleString();
+
+  const tiers = [
+    { divisor: 1_000_000_000, suffix: "B" },
+    { divisor: 1_000_000, suffix: "M" },
+    { divisor: 1_000, suffix: "K" },
+  ] as const;
+
+  for (const { divisor, suffix } of tiers) {
+    if (value >= divisor) {
+      const scaled = Math.floor((value / divisor) * 10) / 10;
+      const [whole, decimal = "0"] = scaled.toString().split(".");
+      return `${whole}${suffix}.${decimal.charAt(0)}+`;
+    }
+  }
+
+  return value.toLocaleString();
+}
+
 export function getProfileSignupBuckets(
   profiles: AdminProfile[],
   days = SIGNUP_CHART_DAYS
-): SignupBucket[] {
-  return getSignupWindowDays(days).map((date) => ({
-    label: WEEKDAY_LABELS[date.getDay()],
-    count: profiles.filter((profile) => isProfileOnLocalDay(profile, date))
-      .length,
-    dayKey: getLocalDayKey(date),
-  }));
+): ChartDayBucket[] {
+  return getDailyBuckets(
+    profiles.map((profile) => ({ timestamp: profile.member_since })),
+    days,
+  );
 }
 
-export function maxSignupBucketCount(buckets: SignupBucket[]) {
+export function getGenerationBuckets(
+  rolls: AdminRoll[],
+  days = SIGNUP_CHART_DAYS,
+): ChartDayBucket[] {
+  return getDailyBuckets(
+    rolls.map((roll) => ({ timestamp: roll.rolled_at })),
+    days,
+  );
+}
+
+export function getRecentRolls(rolls: AdminRoll[]) {
+  return [...rolls].sort(
+    (a, b) =>
+      (parseTimestamp(b.rolled_at)?.getTime() ?? 0) -
+      (parseTimestamp(a.rolled_at)?.getTime() ?? 0),
+  );
+}
+
+export function formatRolledAt(rolledAt: string) {
+  const rolled = parseTimestamp(rolledAt);
+  if (!rolled) return "Unknown";
+  return rolled.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function maxSignupBucketCount(buckets: ChartDayBucket[]) {
   return Math.max(1, ...buckets.map((bucket) => bucket.count));
+}
+
+const LOCAL_ROLLS_PREFIX = "borgwithus-recent-rolls:";
+
+function loadAllLocalRolls(): AdminRoll[] {
+  const rolls: AdminRoll[] = [];
+  const seen = new Set<string>();
+
+  const addRoll = (roll: RecentRoll) => {
+    if (seen.has(roll.id)) return;
+    seen.add(roll.id);
+    rolls.push({
+      id: roll.id,
+      name: roll.name,
+      roll_type: roll.type,
+      rolled_at: roll.rolledAt,
+    });
+  };
+
+  try {
+    const legacyRaw = localStorage.getItem("borgwithus-recent-rolls");
+    if (legacyRaw) {
+      for (const roll of JSON.parse(legacyRaw) as RecentRoll[]) addRoll(roll);
+    }
+  } catch {
+    // ignore malformed cache
+  }
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(LOCAL_ROLLS_PREFIX)) continue;
+
+    try {
+      const items = JSON.parse(localStorage.getItem(key) ?? "[]") as RecentRoll[];
+      for (const roll of items) addRoll(roll);
+    } catch {
+      // ignore malformed cache
+    }
+  }
+
+  return rolls;
+}
+
+export async function fetchAdminRolls(): Promise<{
+  rolls: AdminRoll[];
+  error: string | null;
+}> {
+  const localRolls = loadAllLocalRolls();
+
+  if (!isSupabaseConfigured) {
+    return { rolls: localRolls, error: null };
+  }
+
+  try {
+    const supabase = getSupabase();
+
+    const rpc = await supabase.rpc("admin_list_rolls");
+    if (!rpc.error && Array.isArray(rpc.data)) {
+      const rolls = (rpc.data as AdminRoll[]).map((roll) => ({
+        id: roll.id,
+        name: roll.name,
+        roll_type: roll.roll_type,
+        rolled_at: roll.rolled_at,
+      }));
+      if (rolls.length > 0) {
+        return { rolls, error: null };
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("user_rolls")
+      .select("id, name, roll_type, rolled_at")
+      .order("rolled_at", { ascending: false })
+      .range(0, 9999);
+
+    if (error) {
+      if (localRolls.length > 0) {
+        return { rolls: localRolls, error: null };
+      }
+      const rpcHint = rpc.error
+        ? ` Admin rolls RPC also failed: ${rpc.error.message}`
+        : "";
+      return { rolls: [], error: `${error.message}${rpcHint}` };
+    }
+
+    const rolls = (data ?? []) as AdminRoll[];
+    if (rolls.length > 0) {
+      return { rolls, error: null };
+    }
+
+    return { rolls: localRolls, error: null };
+  } catch {
+    return {
+      rolls: localRolls,
+      error: localRolls.length > 0 ? null : "Could not load generator rolls.",
+    };
+  }
 }
 
 function loadLikes(): Record<string, number> {
@@ -178,7 +359,7 @@ function countLocalUserBuckets() {
 
 export function buildAdminSnapshot(): Omit<
   AdminSnapshot,
-  "profiles" | "profileError" | "profileAccessHint"
+  "profiles" | "profileError" | "profileAccessHint" | "rolls" | "rollsError"
 > {
   const likes = loadLikes();
   const ratings = loadRatings();
@@ -214,6 +395,7 @@ export function buildAdminSnapshot(): Omit<
     },
     localUserBuckets: countLocalUserBuckets(),
     supabaseConfigured: isSupabaseConfigured,
+    aiGenerations: { total: 0 },
   };
 }
 
@@ -275,11 +457,24 @@ export async function fetchAdminProfiles(): Promise<{
   }
 }
 
-export async function loadAdminSnapshot(): Promise<AdminSnapshot> {
+export async function loadAdminSnapshot(options?: {
+  hydrate?: boolean;
+}): Promise<AdminSnapshot> {
+  if (options?.hydrate) {
+    await hydrateSharedBorgData({ force: true });
+  }
+
   const base = buildAdminSnapshot();
-  const [{ profiles, error, accessHint }, remoteCommunity] = await Promise.all([
+  const [
+    { profiles, error, accessHint },
+    { rolls, error: rollsError },
+    remoteCommunity,
+    aiGenerations,
+  ] = await Promise.all([
     fetchAdminProfiles(),
+    fetchAdminRolls(),
     fetchCommunityStatsFromSupabase(),
+    fetchAdminAiGenerations(),
   ]);
 
   const community = remoteCommunity
@@ -292,12 +487,19 @@ export async function loadAdminSnapshot(): Promise<AdminSnapshot> {
       }
     : base.community;
 
+  setCommunitySyncRemote(Boolean(remoteCommunity));
+
   return {
     ...base,
     community,
     profiles,
     profileError: error,
     profileAccessHint: accessHint,
+    rolls,
+    rollsError,
+    aiGenerations: {
+      total: aiGenerations.rows.length,
+    },
   };
 }
 

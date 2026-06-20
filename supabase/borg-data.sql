@@ -35,41 +35,55 @@ alter table public.borg_name_stats enable row level security;
 alter table public.user_saved_likes enable row level security;
 alter table public.user_rolls enable row level security;
 
+drop policy if exists "Anyone can read borg stats" on public.borg_name_stats;
 create policy "Anyone can read borg stats"
   on public.borg_name_stats for select
   using (true);
 
+drop policy if exists "Authenticated users can insert borg stats" on public.borg_name_stats;
 create policy "Authenticated users can insert borg stats"
   on public.borg_name_stats for insert
   with check (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users can update borg stats" on public.borg_name_stats;
 create policy "Authenticated users can update borg stats"
   on public.borg_name_stats for update
   using (auth.role() = 'authenticated');
 
+drop policy if exists "Users can read own saved likes" on public.user_saved_likes;
 create policy "Users can read own saved likes"
   on public.user_saved_likes for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own saved likes" on public.user_saved_likes;
 create policy "Users can insert own saved likes"
   on public.user_saved_likes for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own saved likes" on public.user_saved_likes;
 create policy "Users can update own saved likes"
   on public.user_saved_likes for update
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own saved likes" on public.user_saved_likes;
 create policy "Users can delete own saved likes"
   on public.user_saved_likes for delete
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can read own rolls" on public.user_rolls;
 create policy "Users can read own rolls"
   on public.user_rolls for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own rolls" on public.user_rolls;
 create policy "Users can insert own rolls"
   on public.user_rolls for insert
   with check (auth.uid() = user_id);
+
+drop policy if exists "Admins can read all rolls" on public.user_rolls;
+create policy "Admins can read all rolls"
+  on public.user_rolls for select
+  using (public.current_user_is_admin());
 
 -- Optional: reset any seeded stats in the database
 -- truncate public.borg_name_stats;
@@ -87,18 +101,22 @@ create table if not exists public.borg_catalog (
 
 alter table public.borg_catalog enable row level security;
 
+drop policy if exists "Anyone can read borg catalog" on public.borg_catalog;
 create policy "Anyone can read borg catalog"
   on public.borg_catalog for select
   using (true);
 
+drop policy if exists "Admins can insert borg catalog" on public.borg_catalog;
 create policy "Admins can insert borg catalog"
   on public.borg_catalog for insert
   with check (public.current_user_is_admin());
 
+drop policy if exists "Admins can update borg catalog" on public.borg_catalog;
 create policy "Admins can update borg catalog"
   on public.borg_catalog for update
   using (public.current_user_is_admin());
 
+drop policy if exists "Admins can delete borg catalog" on public.borg_catalog;
 create policy "Admins can delete borg catalog"
   on public.borg_catalog for delete
   using (public.current_user_is_admin());

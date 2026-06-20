@@ -5,6 +5,8 @@ import {
   syncLikeToSupabase,
   syncRatingToSupabase,
 } from "./leaderboardSupabase";
+import { getCachedNameStats, hydrateNameStatsCache } from "./nameStatsCache";
+import { getActiveUserStorageId } from "./userStorage";
 
 const LIKES_KEY = "borgwithus-likes";
 const LEGACY_PICKS_KEY = "borgwithus-picks";
@@ -72,13 +74,17 @@ function notifyLeaderboard() {
 }
 
 export function recordLike(name: string) {
+  if (!getActiveUserStorageId()) return;
+
   bumpCount(LIKES_KEY, name);
-  void syncLikeToSupabase(name);
+  void syncLikeToSupabase(name).then(() => hydrateNameStatsCache());
   notifyLeaderboard();
   window.dispatchEvent(new Event("user-data:update"));
 }
 
 export function getLikeCount(name: string): number {
+  const cached = getCachedNameStats(name);
+  if (cached) return cached.likeCount;
   return loadLikesExtra()[name] ?? 0;
 }
 
@@ -86,6 +92,14 @@ export function getNameRatingStats(name: string): {
   average: number;
   count: number;
 } {
+  const cached = getCachedNameStats(name);
+  if (cached?.ratingCount) {
+    return {
+      average: cached.ratingTotal / cached.ratingCount,
+      count: cached.ratingCount,
+    };
+  }
+
   const entry = loadRatings()[name];
   if (!entry?.count) return { average: 0, count: 0 };
   return { average: entry.total / entry.count, count: entry.count };
@@ -114,6 +128,8 @@ export function getBorgOfTheDay(date = new Date()): string {
 }
 
 export function recordRating(name: string, stars: number) {
+  if (!getActiveUserStorageId()) return;
+
   const ratings = loadRatings();
   const current = ratings[name] ?? { total: 0, count: 0 };
   ratings[name] = {
@@ -121,7 +137,7 @@ export function recordRating(name: string, stars: number) {
     count: current.count + 1,
   };
   saveRatings(ratings);
-  void syncRatingToSupabase(name, stars);
+  void syncRatingToSupabase(name, stars).then(() => hydrateNameStatsCache());
   notifyLeaderboard();
   window.dispatchEvent(new Event("user-data:update"));
 }

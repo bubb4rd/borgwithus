@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import AdminNavbar from "./AdminNavbar";
+import AdminSplashScreen from "./AdminSplashScreen";
 import ScrollToTop from "./ScrollToTop";
 import { useAuth } from "../context/AuthContext";
 
@@ -8,11 +9,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="admin-bg flex min-h-screen items-center justify-center">
-        <p className="text-sm text-[var(--dash-muted)]">Loading admin...</p>
-      </div>
-    );
+    return <AdminSplashScreen visible />;
   }
 
   if (!user) return <Navigate to="/login" replace />;

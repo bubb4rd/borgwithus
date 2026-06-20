@@ -1,16 +1,13 @@
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import AdminSplashScreen from "./AdminSplashScreen";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdminRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="admin-bg flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted">Loading...</p>
-      </div>
-    );
+    return <AdminSplashScreen visible />;
   }
 
   if (!user) return <Navigate to="/login" replace />;

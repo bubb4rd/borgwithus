@@ -74,7 +74,7 @@ export default function Navbar() {
   return (
     <header
       ref={navRef}
-      className="fixed top-4 left-4 right-4 z-50 mx-auto max-w-6xl"
+      className="fixed top-4 left-4 right-4 z-50 site-container"
     >
       <nav className="glass flex items-center justify-between gap-3 rounded-2xl px-4 py-3 md:px-6">
         <Link

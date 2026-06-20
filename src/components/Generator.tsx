@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { generateBorgName, generateMioName } from "../lib/generateName";
 import { recordLike } from "../lib/leaderboard";
 import { addSavedLike, recordRoll } from "../lib/userData";
+import { useAuth } from "../context/AuthContext";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
 const CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!";
@@ -66,8 +68,10 @@ function GeneratorCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLParagraphElement>(null);
   const reducedMotion = useReducedMotion();
+  const { user } = useAuth();
   const [pendingName, setPendingName] = useState<string | null>(null);
   const [likedName, setLikedName] = useState<string | null>(null);
+  const canLike = likable && Boolean(user);
 
   const accentClasses = compact
     ? accent === "cyan"
@@ -129,7 +133,7 @@ function GeneratorCard({
   };
 
   const handleLike = () => {
-    if (!pendingName) return;
+    if (!canLike || !pendingName) return;
     recordLike(pendingName);
     addSavedLike(pendingName);
     setLikedName(pendingName);
@@ -137,7 +141,7 @@ function GeneratorCard({
   };
 
   const showActions = likable && pendingName;
-  const showLiked = likable && likedName && !pendingName;
+  const showLiked = canLike && likedName && !pendingName;
 
   return (
     <div
@@ -169,25 +173,9 @@ function GeneratorCard({
           </p>
         </div>
         {likable && (
-          <div className="flex w-11 shrink-0 flex-col items-center justify-center gap-2 self-stretch">
+          <div className="flex shrink-0 flex-row items-center justify-center gap-2 self-stretch">
             {showActions && (
               <>
-                <button
-                  type="button"
-                  onClick={handleLike}
-                  aria-label="Like this borg"
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-cyan/30 bg-cyan/10 text-cyan transition-colors hover:bg-cyan/20"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    aria-hidden
-                  >
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                </button>
                 <button
                   type="button"
                   onClick={runGenerate}
@@ -209,6 +197,24 @@ function GeneratorCard({
                     <path d="M21 3v6h-6" />
                   </svg>
                 </button>
+                {canLike ? (
+                  <button
+                    type="button"
+                    onClick={handleLike}
+                    aria-label="Like this borg"
+                    className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-cyan/30 bg-cyan/10 text-cyan transition-colors hover:bg-cyan/20"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden
+                    >
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                  </button>
+                ) : null}
               </>
             )}
             {showLiked && (
@@ -260,6 +266,7 @@ export default function Generator({
   compact?: boolean;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
+  const { user } = useAuth();
 
   useGSAP(
     () => {
@@ -285,7 +292,7 @@ export default function Generator({
       ref={sectionRef}
       className={embedded ? "" : "generator-section px-4 py-24 md:px-8"}
     >
-      <div className={embedded ? "" : "mx-auto max-w-6xl"}>
+      <div className={embedded ? "" : "site-container"}>
         {!embedded && (
           <div className="gen-header mb-12 text-center">
             <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-lime">
@@ -297,16 +304,26 @@ export default function Generator({
             <p className="mx-auto mt-4 max-w-lg text-subtle">
               Please drink responsibly.
             </p>
-          </div>
-        )}
-        {embedded && !stacked && (
-          <div className="mb-8">
-            <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-lime">
-              Name generator
-            </p>
-            <h2 className="text-3xl font-bold text-foreground md:text-4xl">
-              Let&apos;s borg.
-            </h2>
+            {!user && (
+              <p className="mx-auto mt-3 max-w-lg text-sm text-muted">
+                Sign in to like and save BORG names you love—they&apos;ll show up
+                in your history.{" "}
+                <Link
+                  to="/login"
+                  className="font-medium text-cyan transition-colors hover:underline"
+                >
+                  Log in
+                </Link>
+                {" or "}
+                <Link
+                  to="/signup"
+                  className="font-medium text-cyan transition-colors hover:underline"
+                >
+                  sign up free
+                </Link>
+                .
+              </p>
+            )}
           </div>
         )}
         <div

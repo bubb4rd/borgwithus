@@ -2,6 +2,7 @@ type StarRatingProps = {
   value?: number;
   onChange?: (rating: number) => void;
   size?: "sm" | "md" | "lg" | "xl";
+  className?: string;
 };
 
 function StarIcon({ size }: { size: number }) {
@@ -22,6 +23,7 @@ export default function StarRating({
   value = 0,
   onChange,
   size = "md",
+  className = "",
 }: StarRatingProps) {
   const starSize =
     size === "sm" ? 14 : size === "lg" ? 22 : size === "xl" ? 28 : 18;
@@ -31,7 +33,7 @@ export default function StarRating({
 
   return (
     <div
-      className={`flex shrink-0 items-center leading-none ${starGap}`}
+      className={`flex shrink-0 items-center leading-none ${starGap} ${className}`.trim()}
       role="group"
       aria-label={readOnly ? `Average rating ${value.toFixed(1)} out of 5` : "Rate name"}
     >

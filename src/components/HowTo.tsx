@@ -128,7 +128,7 @@ export default function HowTo() {
 
   return (
     <section id="how-to" className="px-4 py-24 md:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="site-container">
         <div data-reveal className="mb-12 max-w-2xl">
           <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-cyan">
             The recipe

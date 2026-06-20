@@ -1,6 +1,7 @@
 import gsap from "gsap";
+import { getPublicLenis } from "./publicScroll";
 
-  const NAV_OFFSET = 64;
+const NAV_OFFSET = 64;
 
 export function scrollToSection(target: string) {
   const id = target.startsWith("#") ? target : `#${target}`;
@@ -12,6 +13,12 @@ export function scrollToSection(target: string) {
     const top =
       el.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
     window.scrollTo({ top, behavior: "auto" });
+    return;
+  }
+
+  const lenis = getPublicLenis();
+  if (lenis) {
+    lenis.scrollTo(id, { offset: -NAV_OFFSET, duration: 1.15 });
     return;
   }
 

@@ -20,7 +20,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   return (
     <div className="dashboard-bg min-h-screen">
       <DashboardNavbar />
-      <main key={user.id} className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
+      <main key={user.id} className="site-container px-4 py-8 md:px-8 md:py-10">
         {children}
       </main>
       <ScrollToTop />

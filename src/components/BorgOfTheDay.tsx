@@ -48,22 +48,32 @@ function AdminBotdSection({
 
   if (compact) {
     return (
-      <div className={`flex flex-col ${ADMIN_BOTD_GAP}`}>
+      <div className={`admin-botd-compact flex min-w-0 flex-col ${ADMIN_BOTD_GAP}`}>
         {eyebrow ? (
-          <p className="m-0 dash-eyebrow leading-tight !text-hazard">{eyebrow}</p>
+          <p className="admin-botd-eyebrow m-0 dash-eyebrow leading-tight !text-hazard">
+            {eyebrow}
+          </p>
         ) : null}
-        <p className="m-0 text-xs leading-tight text-muted sm:text-sm">{date}</p>
-        <h2 className="m-0 truncate text-base font-bold leading-tight text-foreground sm:text-lg">
+        <p className="admin-botd-date m-0 text-xs leading-tight text-muted sm:text-sm">
+          {date}
+        </p>
+        <h2 className="admin-botd-name m-0 truncate text-base font-bold leading-tight text-foreground sm:text-lg">
           {name}
         </h2>
-        <div className={`flex items-center ${ADMIN_BOTD_INNER_GAP}`}>
-          <StarRating value={averageRating} size="xl" />
-          <p className="m-0 text-base font-bold tabular-nums leading-none text-foreground">
+        <div className={`admin-botd-rating-row flex min-w-0 items-center ${ADMIN_BOTD_INNER_GAP}`}>
+          <StarRating
+            value={averageRating}
+            size="xl"
+            className="admin-botd-stars min-w-0 shrink"
+          />
+          <p className="admin-botd-rating-score m-0 text-base font-bold tabular-nums leading-none text-foreground">
             {ratingCount > 0 ? averageRating.toFixed(1) : "—"}
           </p>
         </div>
-        <p className="m-0 text-sm font-bold leading-tight text-muted">{ratingText}</p>
-        <p className="m-0 text-sm font-bold leading-tight tabular-nums text-cyan">
+        <p className="admin-botd-rating-label m-0 truncate text-sm font-bold leading-tight text-muted">
+          {ratingText}
+        </p>
+        <p className="admin-botd-like-label m-0 truncate text-sm font-bold leading-tight tabular-nums text-cyan">
           {likeText}
         </p>
       </div>
@@ -141,8 +151,10 @@ export default function BorgOfTheDay({ admin = false }: { admin?: boolean }) {
 
   if (admin) {
     return (
-      <section className={`dashboard-panel admin-top-card flex flex-col ${ADMIN_BOTD_GAP} p-[0.8rem] sm:p-4`}>
-        <p className="m-0 dash-eyebrow shrink-0 leading-tight text-hazard">
+      <section
+        className={`dashboard-panel admin-top-card admin-botd-panel @container/admin-botd flex flex-col ${ADMIN_BOTD_GAP} p-[0.8rem] sm:p-4`}
+      >
+        <p className="m-0 dash-eyebrow shrink-0 leading-tight text-subtle">
           BORG of the day
         </p>
 
@@ -176,7 +188,7 @@ export default function BorgOfTheDay({ admin = false }: { admin?: boolean }) {
   }
 
   return (
-    <section className="dashboard-panel flex h-full flex-col p-5">
+    <section className="flex h-full flex-col p-5">
       <p className="dash-eyebrow text-hazard">BORG of the day</p>
       <h2 className="mt-1 truncate text-lg font-bold text-foreground sm:text-xl">
         {stats.name}

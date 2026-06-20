@@ -6,7 +6,7 @@ export default function AIFeatureCallout() {
 
   return (
     <section className="px-4 pb-4 md:px-8">
-      <div data-reveal className="mx-auto max-w-6xl">
+      <div data-reveal className="site-container">
         <Link
           to={user ? "/dashboard/generator" : "/signup"}
           className="group glass glow-magenta-soft block overflow-hidden rounded-3xl border border-magenta/25 transition hover:border-magenta/45 sm:grid sm:grid-cols-[1fr_auto]"

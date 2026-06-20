@@ -6,19 +6,17 @@ import {
   recordLike,
   recordRating,
 } from "./leaderboard";
+import { saveRemoteBotdDay, type BotdDayRecord } from "./borgBotdSupabase";
+import {
+  getRemoteBotdHistory,
+  upsertRemoteBotdHistoryRecord,
+  usesRemoteBotdHistory,
+} from "./sharedBorgData";
 import { addSavedLike } from "./userData";
 import { getActiveUserStorageId, userStorageKey } from "./userStorage";
 
 const BOTD_BASE = "borgwithus-botd";
 const HISTORY_KEY = "borgwithus-botd-history";
-
-type BotdDayRecord = {
-  day: string;
-  name: string;
-  likeCount: number;
-  ratingTotal: number;
-  ratingCount: number;
-};
 
 export type BestBorgOfTheDay = {
   day: string;
@@ -65,6 +63,10 @@ function getTodayState(date = new Date()): BotdState {
 }
 
 function loadHistory(): Record<string, BotdDayRecord> {
+  if (usesRemoteBotdHistory()) {
+    return getRemoteBotdHistory();
+  }
+
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (!raw) return {};
@@ -74,7 +76,15 @@ function loadHistory(): Record<string, BotdDayRecord> {
   }
 }
 
-function saveHistory(history: Record<string, BotdDayRecord>) {
+function persistHistoryRecord(record: BotdDayRecord, syncRemote = true) {
+  if (usesRemoteBotdHistory()) {
+    upsertRemoteBotdHistoryRecord(record);
+    if (syncRemote) void saveRemoteBotdDay(record);
+    return;
+  }
+
+  const history = loadHistory();
+  history[record.day] = record;
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
@@ -91,31 +101,26 @@ function ensureDayRecord(date = new Date()): BotdDayRecord {
   const record: BotdDayRecord = {
     day,
     name,
-    likeCount: 0,
-    ratingTotal: 0,
-    ratingCount: 0,
+    likeCount: existing?.likeCount ?? 0,
+    ratingTotal: existing?.ratingTotal ?? 0,
+    ratingCount: existing?.ratingCount ?? 0,
   };
-  history[day] = record;
-  saveHistory(history);
+  persistHistoryRecord(record);
   return record;
 }
 
 function bumpDayLike(date = new Date()) {
   const record = ensureDayRecord(date);
-  const history = loadHistory();
-  history[record.day] = { ...record, likeCount: record.likeCount + 1 };
-  saveHistory(history);
+  persistHistoryRecord({ ...record, likeCount: record.likeCount + 1 });
 }
 
 function bumpDayRating(stars: number, date = new Date()) {
   const record = ensureDayRecord(date);
-  const history = loadHistory();
-  history[record.day] = {
+  persistHistoryRecord({
     ...record,
     ratingTotal: record.ratingTotal + stars,
     ratingCount: record.ratingCount + 1,
-  };
-  saveHistory(history);
+  });
 }
 
 function dayRecordStats(record: BotdDayRecord) {

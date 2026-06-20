@@ -1,7 +1,7 @@
 export default function About() {
   return (
     <section id="about" className="px-4 py-24 md:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="site-container">
         <div
           data-reveal
           className="glass relative overflow-hidden rounded-3xl p-8 md:p-12"

@@ -1,3 +1,9 @@
+import {
+  CATALOG_MIX_CYAN_PALETTE,
+  type BorgTagMixSegment,
+} from "../lib/borgCatalog";
+import { ADMIN_CATALOG_CHIP_CLASS } from "../lib/adminListLayout";
+
 type DonutSegment = {
   label: string;
   value: number;
@@ -42,9 +48,9 @@ function SemiArcChart({
   centerLabel: string;
 }) {
   const cx = 50;
-  const cy = 56;
-  const radius = 36;
-  const stroke = 9;
+  const cy = 54;
+  const radius = 40;
+  const stroke = 8;
 
   const active = segments.filter((segment) => segment.value > 0);
   const total = active.reduce((sum, segment) => sum + segment.value, 0);
@@ -54,8 +60,13 @@ function SemiArcChart({
   let cursor = ARC_START + SEGMENT_GAP_DEG;
 
   return (
-    <div className="relative w-[9.68rem] shrink-0 sm:w-[11rem]">
-      <svg viewBox="0 0 100 68" className="h-auto w-full" aria-hidden>
+    <div className="@container/chart relative h-full w-full min-h-0">
+      <svg
+        viewBox="4 8 92 50"
+        className="h-full w-full"
+        preserveAspectRatio="xMidYMax meet"
+        aria-hidden
+      >
         <path
           d={arcPath(
             cx,
@@ -65,7 +76,8 @@ function SemiArcChart({
             ARC_END - SEGMENT_GAP_DEG,
           )}
           fill="none"
-          stroke="color-mix(in srgb, var(--dash-muted) 22%, transparent)"
+          stroke={CATALOG_MIX_CYAN_PALETTE[300]}
+          strokeOpacity={0.28}
           strokeWidth={stroke}
           strokeLinecap="round"
         />
@@ -88,11 +100,11 @@ function SemiArcChart({
             );
           })}
       </svg>
-      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center">
-        <p className="mt-0 text-[1.32rem] font-bold tabular-nums leading-none text-[var(--dash-foreground)] sm:text-[1.65rem]">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center text-center">
+        <p className="mt-0 text-[length:clamp(0.9rem,24cqw,2rem)] font-bold tabular-nums leading-none text-[var(--dash-foreground)]">
           {centerValue}
         </p>
-        <p className="mt-0.5 text-[0.572rem] font-medium uppercase tracking-wide text-[var(--dash-muted)] sm:text-[0.66rem]">
+        <p className="mt-0.5 text-[length:clamp(0.5rem,9cqw,0.625rem)] font-medium uppercase tracking-wide text-[var(--dash-muted)]">
           {centerLabel}
         </p>
       </div>
@@ -101,71 +113,54 @@ function SemiArcChart({
 }
 
 export default function AdminCatalogMixCard({
-  borg,
-  mio,
-  ai,
-  total,
-  adminAdded,
+  borgTotal,
+  tagSegments,
 }: {
-  borg: number;
-  mio: number;
-  ai: number;
-  total: number;
-  adminAdded: number;
+  borgTotal: number;
+  tagSegments: BorgTagMixSegment[];
 }) {
-  const segments: DonutSegment[] = [
-    { label: "BORG", value: borg, color: "var(--accent-cyan)" },
-    { label: "Mio", value: mio, color: "var(--accent-lime)" },
-    { label: "AI", value: ai, color: "var(--accent-magenta)" },
-  ].filter((segment) => segment.value > 0);
+  const segments: DonutSegment[] = tagSegments.map((segment) => ({
+    label: segment.label,
+    value: segment.count,
+    color: segment.color,
+  }));
 
   return (
-    <section className="dashboard-panel admin-top-card flex flex-col p-[0.8rem] sm:p-4">
-      <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-subtle">
-        Catalog mix
-      </p>
-
-      <div className="mt-[0.6rem] flex min-h-0 flex-1 flex-col justify-between gap-2">
-        <div className="shrink-0 flex flex-col gap-[0.4rem]">
-          <p className="text-xl font-bold tabular-nums text-foreground sm:text-2xl">
-            {total.toLocaleString()}
-          </p>
-          <p className="text-xs text-[var(--dash-muted)]">
-            {adminAdded} admin-added
-          </p>
-        </div>
-
-        <div className="flex min-h-0 flex-col items-center justify-end gap-[0.6rem]">
+    <section className={`${ADMIN_CATALOG_CHIP_CLASS} p-2 sm:p-2.5`}>
+      <div className="flex min-h-0 flex-1 flex-col gap-1">
+        <div className="flex min-h-0 w-full flex-1 justify-center">
           <SemiArcChart
             segments={
               segments.length
                 ? segments
                 : [{ label: "Empty", value: 1, color: "var(--dash-border)" }]
             }
-            centerValue={total}
-            centerLabel="total"
+            centerValue={borgTotal}
+            centerLabel="borgs"
           />
-          <ul className="flex flex-wrap items-center justify-center gap-x-[0.825rem] gap-y-[0.4125rem]">
-            {segments.map((segment) => {
-              const pct = total ? Math.round((segment.value / total) * 100) : 0;
-              return (
-                <li
-                  key={segment.label}
-                  className="flex items-center gap-[0.4125rem] text-[0.75625rem] font-medium text-[var(--dash-muted)] sm:text-[0.825rem]"
-                >
-                  <span
-                    className="h-[0.4125rem] w-[0.4125rem] shrink-0 rounded-full"
-                    style={{ backgroundColor: segment.color }}
-                  />
-                  {segment.label}
-                  <span className="tabular-nums text-[var(--dash-foreground)]">
-                    {pct}%
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
         </div>
+        <ul className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-1">
+          {segments.map((segment) => {
+            const pct = borgTotal
+              ? Math.round((segment.value / borgTotal) * 100)
+              : 0;
+            return (
+              <li
+                key={segment.label}
+                className="flex items-center gap-1 text-[0.65rem] font-medium text-[var(--dash-muted)] sm:text-[0.7rem]"
+              >
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: segment.color }}
+                />
+                {segment.label}
+                <span className="tabular-nums text-[var(--dash-foreground)]">
+                  {pct}%
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );

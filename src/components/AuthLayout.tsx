@@ -31,7 +31,7 @@ export default function AuthLayout({ children, showFooter = true }: AuthLayoutPr
 
   return (
     <div ref={pageRef} className="site-bg relative min-h-screen">
-      <header className="fixed top-4 left-4 right-4 z-50 mx-auto max-w-6xl">
+      <header className="fixed top-4 left-4 right-4 z-50 site-container">
         <nav className="glass flex items-center justify-between rounded-2xl px-4 py-3 md:px-6">
           <Link
             to="/"

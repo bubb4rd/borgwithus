@@ -16,7 +16,7 @@ const entrance = {
 function HeroMediaPlaceholder() {
   return (
     <div
-      className="hero-media mx-auto flex aspect-[4/5] w-[85.75%] min-h-[18.85rem] flex-col items-center justify-center gap-4 overflow-hidden rounded-3xl border border-dashed border-border bg-elevated/80 text-subtle sm:min-h-[22.25rem] lg:aspect-[3/4] lg:min-h-[24rem]"
+      className="hero-media mx-auto flex aspect-[4/5] w-[85.75%] min-h-[18.85rem] flex-col items-center justify-center gap-4 overflow-hidden rounded-3xl border border-dashed border-border bg-elevated/80 text-subtle sm:min-h-[22.25rem] lg:aspect-[3/4] lg:min-h-[24rem] 2xl:min-h-[28rem]"
       aria-label="Hero image or video placeholder"
     >
       <div className="flex items-center gap-3">
@@ -63,9 +63,9 @@ export default function Hero() {
   useGSAP(
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.from(".hero-badge", { y: 16, ...entrance, duration: 0.5 })
-        .from(".hero-title", { y: 40, ...entrance, duration: 0.8 }, "-=0.2")
-        .from(".hero-sub", { y: 24, ...entrance, duration: 0.7 }, "-=0.45")
+      tl.from(".hero-title", { y: 40, ...entrance, duration: 0.8 })
+        .from(".hero-badge", { y: 16, ...entrance, duration: 0.5 }, "-=0.35")
+        .from(".hero-sub", { y: 24, ...entrance, duration: 0.7 }, "-=0.25")
         .from(
           ".hero-cta-row > *",
           { y: 20, ...entrance, stagger: 0.08 },
@@ -86,34 +86,47 @@ export default function Hero() {
       ref={sectionRef}
       className="flex min-h-screen items-center px-4 pt-28 pb-16 md:px-8"
     >
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
-          <div className="min-w-0 max-w-3xl">
-            <p className="hero-badge mb-6 inline-flex items-center gap-2 rounded-full border border-hazard/25 bg-hazard/5 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-muted">
-            <svg
-              className="h-3.5 w-3.5 shrink-0 text-hazard"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M12 3 2 21h20L12 3z" />
-              <path d="M12 9v4" />
-              <path d="M12 16v2" />
-            </svg>
-            Black Out Rage Gallon
-          </p>
-          <h1 className="hero-title text-5xl font-bold leading-[1.08] text-foreground md:text-6xl lg:text-7xl">
+      <div className="site-container">
+        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12 2xl:gap-16">
+          <div className="min-w-0 max-w-3xl 2xl:max-w-none">
+          <h1 className="hero-title text-5xl font-bold leading-[1.08] text-foreground md:text-6xl lg:text-7xl 2xl:text-8xl">
             <span className="block">New look,</span>
             <span className="block">new features,</span>
             <span className="block">
-              same <span className="text-hazard">BORG.</span>
+              same{" "}
+              <span className="inline-flex items-center gap-2 text-hazard">
+                <svg
+                  className="h-[0.6em] w-[0.6em] shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                BORG.
+              </span>
             </span>
           </h1>
-          <p className="hero-sub mt-6 max-w-xl text-lg text-muted md:text-xl">
+          <p className="hero-badge mb-0 mt-6 inline-flex items-center gap-2 rounded-full border border-hazard/25 bg-hazard/5 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-muted">
+            <svg
+              className="h-4 w-4 shrink-0 text-hazard"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden
+            >
+              <path
+                fillRule="evenodd"
+                d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Black Out Rage Gallon
+          </p>
+          <p className="hero-sub mt-4 max-w-xl text-lg text-muted md:text-xl 2xl:max-w-2xl 2xl:text-2xl">
             Take your drinking to another level with a BORG!
           </p>
           <div className="hero-cta-row mt-10 flex max-w-full flex-wrap items-center gap-3 sm:gap-4">

@@ -13,12 +13,12 @@ export default function GeneratorCTA() {
   return (
     <Link
       to="/dashboard/generator"
-      className="group dashboard-panel dashboard-panel-interactive flex flex-col overflow-hidden"
+      className="group dashboard-panel dashboard-panel-interactive flex h-full flex-col overflow-hidden"
     >
       <div className="p-5 sm:p-6">
         <p className="dash-eyebrow">Generator</p>
         <h2 className="mt-1 text-xl font-bold text-[var(--dash-foreground)]">
-          Roll your next borg name
+          Roll your next BORG
         </h2>
         <p className="mt-2 text-sm text-[var(--dash-muted)]">
           Classic BORG &amp; Mio, plus AI. Like a favorite and save it to history.

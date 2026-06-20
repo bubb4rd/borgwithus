@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getInitials } from "../lib/userStats";
 
 export default function UserMenu({ dropUp = false }: { dropUp?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -59,9 +58,22 @@ export default function UserMenu({ dropUp = false }: { dropUp?: boolean }) {
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="Account menu"
-        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-cyan to-sky-400 text-xs font-bold text-on-accent transition-opacity hover:opacity-90"
+        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-cyan-800 text-white transition-opacity hover:opacity-90"
       >
-        {getInitials(user.name)}
+        <svg
+          width={20}
+          height={20}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
       </button>
 
       {open && (

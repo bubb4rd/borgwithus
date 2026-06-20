@@ -8,7 +8,7 @@ export default function AdminNavbar() {
       <nav className="dash-nav-inner">
         <Link
           to="/dashboard/admin"
-          className="min-w-0 text-base font-semibold tracking-tight text-foreground transition-colors hover:text-cyan md:text-lg"
+          className="min-w-0 text-base font-semibold tracking-tight text-foreground transition-colors hover:text-muted md:text-lg"
         >
           borg<span className="text-cyan">with</span>us
           <span className="ml-2 hidden text-xs font-medium text-subtle sm:inline">

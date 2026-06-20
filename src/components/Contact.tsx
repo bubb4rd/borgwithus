@@ -32,7 +32,7 @@ export default function Contact() {
 
   return (
     <section id="contact" className="px-4 py-24 md:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="site-container">
         <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
           <div data-reveal>
             <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-cyan">

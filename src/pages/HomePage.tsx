@@ -12,9 +12,12 @@ import Footer from "../components/Footer";
 import HashScroll from "../components/HashScroll";
 import ScrollToTop from "../components/ScrollToTop";
 import { useGSAP } from "@gsap/react";
+import { usePublicSmoothScroll } from "../hooks/usePublicSmoothScroll";
 
 export default function HomePage() {
   const rootRef = useRef<HTMLDivElement>(null);
+
+  usePublicSmoothScroll();
 
   useGSAP(
     () => {

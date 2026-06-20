@@ -16,6 +16,7 @@ import { isAdminEmail } from "../lib/adminAccess";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase";
 import { setPendingEmailVerification } from "../lib/pendingVerification";
 import { hydrateUserDataFromSupabase } from "../lib/userData";
+import { hydrateSharedBorgData } from "../lib/sharedBorgData";
 import { bindUserStorage } from "../lib/userStorage";
 
 export type AiTone = "funny" | "clean";
@@ -94,6 +95,7 @@ async function applyAuthUser(
 
   if (next?.id && isSupabaseConfigured) {
     await hydrateUserDataFromSupabase(next.id);
+    await hydrateSharedBorgData();
   }
 }
 

@@ -1,7 +1,7 @@
 export default function Footer() {
   return (
     <footer className="border-t border-border px-4 py-10 md:px-8">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
+      <div className="site-container flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
         <p className="text-lg font-semibold text-foreground">
           borg<span className="text-cyan">with</span>us
         </p>

@@ -1,8 +1,13 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { recordAIFeedback, type AIFeedback } from "../lib/aiFeedback";
-import { generateAIName } from "../lib/generateAIName";
+import {
+  BorgAiError,
+  generateAIName,
+  getBorgAiUsage,
+  type BorgAiUsage,
+} from "../lib/generateAIName";
 import { recordRoll } from "../lib/userData";
 import { useAuth } from "../context/AuthContext";
 import { useReducedMotion } from "../hooks/useReducedMotion";
@@ -47,6 +52,19 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
   const [result, setResult] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<AIFeedback | null>(null);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [usage, setUsage] = useState<BorgAiUsage | null>(null);
+
+  useEffect(() => {
+    void getBorgAiUsage().then(setUsage);
+  }, [user?.id]);
+
+  const tracked = usage?.tracked ?? false;
+  const limitReached = tracked && usage !== null && usage.remaining <= 0;
+  const usageLabel =
+    usage === null
+      ? null
+      : `${usage.remaining}/${usage.limit} left today`;
 
   useGSAP(
     () => {
@@ -67,31 +85,45 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
     { scope: sectionRef }
   );
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
+    if (limitReached) return;
+
     setStatus("loading");
     setResult(null);
     setFeedback(null);
+    setError(null);
 
-    window.setTimeout(() => {
+    try {
       const tone = user?.settings.aiTone ?? "funny";
-      const name = generateAIName(prompt, tone);
-      recordRoll("ai", name);
-      setResult(name);
-      setStatus("idle");
+      const generated = await generateAIName(prompt, tone);
+      recordRoll("ai", generated.name);
+      setResult(generated.name);
+      setUsage(generated.usage);
 
       if (!resultRef.current || reducedMotion) return;
       gsap.fromTo(
         resultRef.current,
         { y: 8, autoAlpha: 0 },
-        { y: 0, autoAlpha: 1, duration: 0.45, ease: "power2.out" }
+        { y: 0, autoAlpha: 1, duration: 0.45, ease: "power2.out" },
       );
-    }, 700);
+    } catch (err) {
+      const message =
+        err instanceof BorgAiError
+          ? err.message
+          : "BORG AI could not generate a name. Try again.";
+      setError(message);
+      if (err instanceof BorgAiError && err.usage) {
+        setUsage(err.usage);
+      }
+    } finally {
+      setStatus("idle");
+    }
   };
 
   const handleFeedback = (value: AIFeedback) => {
     if (!result) return;
     setFeedback(value);
-    recordAIFeedback(result, prompt, value);
+    void recordAIFeedback(result, prompt, value);
   };
 
   const panelClass = embedded
@@ -110,10 +142,11 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
               <span className="rounded-full border border-hazard/25 bg-hazard/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-hazard">
                 Beta
               </span>
-              <span className="hidden text-subtle sm:inline">·</span>
-              <p className="w-full text-xs text-muted sm:w-auto">
-                Add context, generate, then rate to train our model.
-              </p>
+              {usageLabel ? (
+                <span className="w-full text-xs tabular-nums text-subtle sm:ml-auto sm:w-auto">
+                  {usageLabel}
+                </span>
+              ) : null}
             </div>
 
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-stretch">
@@ -124,18 +157,19 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (status !== "loading") handleGenerate();
+                      if (status !== "loading" && !limitReached) handleGenerate();
                     }
                   }}
                   rows={2}
                   placeholder="e.g. tropical pool party, chaotic finance bro, gym rat energy..."
                   aria-label="BORG AI context"
-                  className={`${inputClass} w-full resize-none px-3 py-2.5 pr-12 text-sm`}
+                  disabled={limitReached}
+                  className={`${inputClass} w-full resize-none px-3 py-2.5 pr-12 text-sm disabled:cursor-not-allowed disabled:opacity-60`}
                 />
                 <button
                   type="button"
                   onClick={handleGenerate}
-                  disabled={status === "loading"}
+                  disabled={status === "loading" || limitReached}
                   aria-label={result ? "Re-generate name" : "Generate name"}
                   className="absolute bottom-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-gradient-to-br from-magenta to-fuchsia-500 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -160,7 +194,14 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
                 </button>
               </div>
 
-              <div className="flex min-h-[3.25rem] w-full min-w-[12rem] items-center justify-between gap-3 rounded-xl border border-border bg-elevated px-3 py-2.5 sm:w-1/2 sm:flex-none">
+              <div
+                className={`flex min-h-[3.25rem] w-full min-w-[12rem] items-center justify-between gap-3 rounded-xl border bg-elevated px-3 py-2.5 sm:w-1/2 sm:flex-none ${
+                  error && !result
+                    ? "border-red-500/30 bg-red-500/5"
+                    : "border-border"
+                }`}
+                aria-live="polite"
+              >
                 {result ? (
                   <>
                     <p
@@ -212,11 +253,15 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
                       </FeedbackButton>
                     </div>
                   </>
+                ) : error ? (
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                 ) : (
                   <p className="text-sm text-subtle">
                     {status === "loading"
                       ? "BORGing..."
-                      : "Generated name appears here."}
+                      : limitReached
+                        ? "Daily limit reached. Try again tomorrow."
+                        : "Generated name appears here."}
                   </p>
                 )}
               </div>
@@ -233,7 +278,7 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
       ref={sectionRef}
       className="px-4 py-16 md:px-8"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className="site-container">
         <div className="ai-header mb-8">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-magenta">
             BORG AI
@@ -242,11 +287,18 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
             Custom BORG names
           </h2>
           <p className="mt-2 max-w-xl text-subtle">
-            Describe a vibe, theme, or inside joke and get a tailored name.
+            Describe a vibe, theme, or inside joke and the nano model will craft a
+            fresh BORG name.
+            {usageLabel ? ` ${usageLabel}.` : null}
           </p>
         </div>
 
         <div className={panelClass}>
+          {error ? (
+            <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {error}
+            </p>
+          ) : null}
           <label className="block">
             <span className="mb-2 block text-sm text-subtle">Context</span>
             <textarea
@@ -254,16 +306,21 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
               placeholder="e.g. tropical pool party, chaotic finance bro..."
-              className={`${inputClass} resize-none`}
+              disabled={limitReached}
+              className={`${inputClass} resize-none disabled:cursor-not-allowed disabled:opacity-60`}
             />
           </label>
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={status === "loading"}
+            disabled={status === "loading" || limitReached}
             className="mt-4 cursor-pointer rounded-full bg-gradient-to-r from-magenta to-fuchsia-400 px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {status === "loading" ? "Generating..." : "Generate"}
+            {status === "loading"
+              ? "Generating..."
+              : limitReached
+                ? "Daily limit reached"
+                : "Generate"}
           </button>
         </div>
       </div>

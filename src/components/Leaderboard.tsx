@@ -233,7 +233,7 @@ export default function Leaderboard({
       ref={sectionRef}
       className={embedded ? "" : "px-4 py-24 md:px-8"}
     >
-      <div className={embedded ? "" : "mx-auto max-w-6xl"}>
+      <div className={embedded ? "" : "site-container"}>
         {!hideHeader && (
         <div
           data-reveal
