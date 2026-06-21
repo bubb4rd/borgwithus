@@ -5,9 +5,10 @@ import gsap from "gsap";
 import ThemeToggle from "./ThemeToggle";
 import UserMenu from "./UserMenu";
 import { HamburgerButton, MobileNavDrawer } from "./MobileNav";
+import { useAuth } from "../context/AuthContext";
 import { useMobileMenu } from "../hooks/useMobileMenu";
 
-const navLinks = [
+const baseNavLinks = [
   { to: "/dashboard/generator", label: "Generator" },
   { to: "/dashboard/leaderboard", label: "Leaderboard" },
   { to: "/dashboard/history", label: "History" },
@@ -25,7 +26,12 @@ function navClass({ isActive }: { isActive: boolean }) {
 
 export default function DashboardNavbar() {
   const navRef = useRef<HTMLElement>(null);
+  const { user } = useAuth();
   const { open, toggleMenu, closeMenu } = useMobileMenu();
+
+  const navLinks = user?.isAdmin
+    ? [...baseNavLinks, { to: "/dashboard/admin", label: "Admin" }]
+    : baseNavLinks;
 
   useGSAP(
     () => {

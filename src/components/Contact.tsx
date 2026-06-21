@@ -49,14 +49,28 @@ export default function Contact() {
               Borg names you thought of? Drop us a line by any means.
             </p>
             <div className="glass rounded-2xl p-6">
-              <h3 className="mb-2 text-lg font-semibold text-foreground">
+              <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold text-foreground">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0 text-cyan"
+                  aria-hidden
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
                 Disclaimer
               </h3>
               <p className="text-sm leading-relaxed text-subtle">
                 We handle inquiries on a case-by-case basis, promising to give
-                yours the spotlight it deserves. So fire away with questions,
-                ideas, or just a friendly &apos;hello&apos; — we can&apos;t wait
-                to dive into the delicious details!
+                yours the spotlight it deserves.
               </p>
             </div>
           </div>
