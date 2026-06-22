@@ -5,7 +5,7 @@ import {
   sanitizeBorgAiName,
 } from "./borgAiPrompt";
 
-const DEFAULT_MODEL = "llama2-uncensored";
+const DEFAULT_MODEL = "llama3.2:3b";
 
 function getLocalModel() {
   return import.meta.env.VITE_BORG_AI_MODEL?.trim() || DEFAULT_MODEL;

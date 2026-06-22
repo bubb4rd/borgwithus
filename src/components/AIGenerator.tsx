@@ -11,6 +11,7 @@ import {
 import { recordRoll } from "../lib/userData";
 import { useAuth } from "../context/AuthContext";
 import { useReducedMotion } from "../hooks/useReducedMotion";
+import { BorgingIndicator } from "./BorgingIndicator";
 
 const inputClass =
   "w-full rounded-xl border border-border bg-input px-4 py-3 text-foreground outline-none transition-colors focus:border-magenta/50";
@@ -198,7 +199,9 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
                 className={`flex min-h-[3.25rem] w-full min-w-[12rem] items-center justify-between gap-3 rounded-xl border bg-elevated px-3 py-2.5 sm:w-1/2 sm:flex-none ${
                   error && !result
                     ? "border-red-500/30 bg-red-500/5"
-                    : "border-border"
+                    : status === "loading"
+                      ? "border-muted/50"
+                      : "border-border"
                 }`}
                 aria-live="polite"
               >
@@ -255,13 +258,13 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
                   </>
                 ) : error ? (
                   <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                ) : status === "loading" ? (
+                  <BorgingIndicator />
                 ) : (
                   <p className="text-sm text-subtle">
-                    {status === "loading"
-                      ? "BORGing..."
-                      : limitReached
-                        ? "Daily limit reached. Try again tomorrow."
-                        : "Generated name appears here."}
+                    {limitReached
+                      ? "Daily limit reached. Try again tomorrow."
+                      : "Generated name appears here."}
                   </p>
                 )}
               </div>
@@ -316,11 +319,13 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
             disabled={status === "loading" || limitReached}
             className="mt-4 cursor-pointer rounded-full bg-gradient-to-r from-magenta to-fuchsia-400 px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {status === "loading"
-              ? "Generating..."
-              : limitReached
-                ? "Daily limit reached"
-                : "Generate"}
+            {status === "loading" ? (
+              <BorgingIndicator compact showStatus={false} />
+            ) : limitReached ? (
+              "Daily limit reached"
+            ) : (
+              "Generate"
+            )}
           </button>
         </div>
       </div>

@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const BORG_AI_DAILY_LIMIT = 5;
-const BORG_AI_MODEL = Deno.env.get("BORG_AI_MODEL") ?? "llama2-uncensored";
+const BORG_AI_MODEL = Deno.env.get("BORG_AI_MODEL") ?? "llama3.2:3b";
 
 const BORG_AI_SYSTEM_PROMPT = `You are a BORG name generator. You output ONE borg name per request. Nothing else.
 
@@ -236,32 +236,55 @@ function extractModelText(output: unknown) {
 }
 
 async function callLocalModel(userMessage: string, extraInstruction = "") {
-  const inferenceHost = Deno.env.get("AI_INFERENCE_API_HOST");
+  const inferenceHost = Deno.env.get("AI_INFERENCE_API_HOST")?.replace(/\/$/, "");
   if (!inferenceHost) {
     throw new Error(
-      "BORG AI inference is not configured. Set AI_INFERENCE_API_HOST to your Ollama server (GPU/VRAM) and pull llama2-uncensored.",
+      "BORG AI inference is not configured. Set AI_INFERENCE_API_HOST to your Ollama server and pull the BORG_AI_MODEL.",
     );
   }
 
-  const session = new Supabase.ai.Session(BORG_AI_MODEL);
   const content = extraInstruction
     ? `${userMessage}\n\n${extraInstruction}`
     : userMessage;
 
-  const output = await session.run(
-    {
-      messages: [
-        { role: "system", content: BORG_AI_SYSTEM_PROMPT },
-        { role: "user", content },
-      ],
-    },
-    {
-      mode: "ollama",
-      stream: false,
-      timeout: 90,
-    },
-  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 90_000);
 
+  let response: Response;
+  try {
+    response = await fetch(`${inferenceHost}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: BORG_AI_MODEL,
+        stream: false,
+        messages: [
+          { role: "system", content: BORG_AI_SYSTEM_PROMPT },
+          { role: "user", content },
+        ],
+      }),
+    });
+  } catch (error) {
+    const message =
+      error instanceof DOMException && error.name === "AbortError"
+        ? "BORG AI inference timed out after 90 seconds."
+        : `Could not reach BORG AI inference at ${inferenceHost}.`;
+    throw new Error(message);
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(
+      detail.includes("not found")
+        ? `Model "${BORG_AI_MODEL}" not found. Run: ollama pull ${BORG_AI_MODEL}`
+        : `Ollama request failed (${response.status}). ${detail.slice(0, 200)}`,
+    );
+  }
+
+  const output = await response.json();
   const text = sanitizeModelName(extractModelText(output));
   if (!text) {
     throw new Error("Local model returned an empty BORG name.");
@@ -433,6 +456,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "BORG AI generation failed.";
+    console.error("generate-borg-name failed:", message, error);
     const refunded = await refundBorgAiGeneration(supabase);
     const finalUsage = refunded ?? usage;
     return jsonResponse(
