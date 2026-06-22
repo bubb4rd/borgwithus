@@ -11,6 +11,13 @@ function getLocalModel() {
   return import.meta.env.VITE_BORG_AI_MODEL?.trim() || DEFAULT_MODEL;
 }
 
+function getOllamaBaseUrl() {
+  const configured = import.meta.env.VITE_OLLAMA_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+  if (import.meta.env.DEV) return "http://127.0.0.1:11434";
+  throw new Error("VITE_OLLAMA_URL is not configured.");
+}
+
 export async function generateBorgNameViaLocalOllama(input: {
   prompt: string;
   examples: string[];
@@ -21,32 +28,38 @@ export async function generateBorgNameViaLocalOllama(input: {
   extraInstruction?: string;
 }) {
   const userMessage = buildBorgAiUserMessage(input);
-  const response = await fetch("/ollama/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: getLocalModel(),
-      stream: false,
-      temperature: 0.85,
-      max_tokens: 32,
-      messages: [
-        { role: "system", content: BORG_AI_SYSTEM_PROMPT },
-        { role: "user", content: userMessage },
-      ],
-    }),
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${getOllamaBaseUrl()}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: getLocalModel(),
+        stream: false,
+        messages: [
+          { role: "system", content: BORG_AI_SYSTEM_PROMPT },
+          { role: "user", content: userMessage },
+        ],
+      }),
+    });
+  } catch {
+    throw new Error(
+      `Could not reach Ollama at ${getOllamaBaseUrl()}. Start Ollama, then run: ollama pull ${getLocalModel()}`,
+    );
+  }
 
   if (!response.ok) {
     const detail = await response.text();
     throw new Error(
       detail.includes("not found")
         ? `Model "${getLocalModel()}" not found. Run: ollama pull ${getLocalModel()}`
-        : `Ollama request failed (${response.status}). Is Ollama running?`,
+        : `Ollama request failed (${response.status}). Is Ollama running on ${getOllamaBaseUrl()}?`,
     );
   }
 
   const payload = await response.json();
-  const content = payload?.choices?.[0]?.message?.content;
+  const content = payload?.message?.content;
   if (typeof content !== "string" || !content.trim()) {
     throw new Error("Ollama returned an empty BORG name.");
   }

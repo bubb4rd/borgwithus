@@ -8,6 +8,7 @@ import { getSupabase, isSupabaseConfigured } from "./supabase";
 const MAX_ATTEMPTS = 3;
 
 function isLocalBorgAiDev() {
+  if (import.meta.env.VITE_BORG_AI_USE_REMOTE === "true") return false;
   return import.meta.env.DEV && import.meta.env.VITE_BORG_AI_LOCAL === "true";
 }
 
