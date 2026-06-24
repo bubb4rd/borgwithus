@@ -7,7 +7,6 @@ export default function GeneratorPage() {
   return (
     <DashboardShell>
       <DashboardPageHeader
-        eyebrow="Tools"
         title="Generator"
         description="Roll classic BORG & Mio names or spin up something new with AI."
       />

@@ -12,9 +12,29 @@ import { recordRoll } from "../lib/userData";
 import { useAuth } from "../context/AuthContext";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { BorgingIndicator } from "./BorgingIndicator";
+import {
+  BorgAiStatusMessage,
+  classifyBorgAiError,
+} from "./BorgAiStatusMessage";
 
 const inputClass =
   "w-full rounded-xl border border-border bg-input px-4 py-3 text-foreground outline-none transition-colors focus:border-magenta/50";
+
+/** Shown in the generator UI only — not sent from the API. */
+function getBorgAiGenerateErrorCode(message: string): string | null {
+  if (/timed out/i.test(message)) return "3BWGT00";
+  if (
+    /returned an empty|returned nothing|empty borg name|invalid borg name format/i.test(
+      message,
+    )
+  ) {
+    return "3BWGT01";
+  }
+  if (/blocked|disliked|unique borg name/i.test(message)) {
+    return "3BWGT44";
+  }
+  return null;
+}
 
 function FeedbackButton({
   label,
@@ -150,7 +170,7 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
               ) : null}
             </div>
 
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-stretch">
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative min-w-0 flex-1">
                 <textarea
                   value={prompt}
@@ -165,21 +185,21 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
                   placeholder="e.g. tropical pool party, chaotic finance bro, gym rat energy..."
                   aria-label="BORG AI context"
                   disabled={limitReached}
-                  className={`${inputClass} w-full resize-none px-3 py-2.5 pr-12 text-sm disabled:cursor-not-allowed disabled:opacity-60`}
+                  className={`${inputClass} w-full resize-none px-3 py-2.5 pr-14 text-sm disabled:cursor-not-allowed disabled:opacity-60`}
                 />
                 <button
                   type="button"
                   onClick={handleGenerate}
                   disabled={status === "loading" || limitReached}
                   aria-label={result ? "Re-generate name" : "Generate name"}
-                  className="absolute bottom-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-gradient-to-br from-magenta to-magenta-light text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg bg-cyan text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {status === "loading" ? (
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink/30 border-t-ink" />
                   ) : (
                     <svg
-                      width="16"
-                      height="16"
+                      width="18"
+                      height="18"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -198,7 +218,11 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
               <div
                 className={`flex min-h-[3.25rem] w-full min-w-[12rem] items-center justify-between gap-3 rounded-xl border bg-elevated px-3 py-2.5 sm:w-1/2 sm:flex-none ${
                   error && !result
-                    ? "border-red-500/30 bg-red-500/5"
+                    ? classifyBorgAiError(error) === "limit"
+                      ? "border-muted/50 bg-muted/5"
+                      : "border-red-500/30 bg-red-500/5"
+                    : limitReached && !result && !error
+                      ? "border-muted/50 bg-muted/5"
                     : status === "loading"
                       ? "border-muted/50"
                       : "border-border"
@@ -257,15 +281,22 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
                     </div>
                   </>
                 ) : error ? (
-                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                  <BorgAiStatusMessage
+                    kind={classifyBorgAiError(error)}
+                    code={getBorgAiGenerateErrorCode(error) ?? undefined}
+                  >
+                    {error}
+                  </BorgAiStatusMessage>
                 ) : status === "loading" ? (
                   <BorgingIndicator />
+                ) : limitReached ? (
+                  <BorgAiStatusMessage kind="limit">
+                    Daily limit reached. Try again tomorrow.
+                  </BorgAiStatusMessage>
                 ) : (
-                  <p className="text-sm text-subtle">
-                    {limitReached
-                      ? "Daily limit reached. Try again tomorrow."
-                      : "Generated name appears here."}
-                  </p>
+                  <BorgAiStatusMessage kind="idle">
+                    Generated name appears here.
+                  </BorgAiStatusMessage>
                 )}
               </div>
             </div>
@@ -298,9 +329,23 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
 
         <div className={panelClass}>
           {error ? (
-            <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-              {error}
-            </p>
+            <div
+              className={`mb-3 rounded-lg border px-3 py-2 ${
+                classifyBorgAiError(error) === "limit"
+                  ? "border-muted/50 bg-muted/5"
+                  : "border-red-500/30 bg-red-500/10"
+              }`}
+            >
+              <BorgAiStatusMessage kind={classifyBorgAiError(error)}>
+                {error}
+              </BorgAiStatusMessage>
+            </div>
+          ) : limitReached ? (
+            <div className="mb-3 rounded-lg border border-muted/50 bg-muted/5 px-3 py-2">
+              <BorgAiStatusMessage kind="limit">
+                Daily limit reached. Try again tomorrow.
+              </BorgAiStatusMessage>
+            </div>
           ) : null}
           <label className="block">
             <span className="mb-2 block text-sm text-subtle">Context</span>
@@ -317,7 +362,7 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
             type="button"
             onClick={handleGenerate}
             disabled={status === "loading" || limitReached}
-            className="mt-4 cursor-pointer rounded-full bg-gradient-to-r from-magenta to-magenta-light px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-4 cursor-pointer rounded-full bg-cyan px-6 py-3 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === "loading" ? (
               <BorgingIndicator compact showStatus={false} />

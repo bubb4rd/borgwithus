@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
           <button
             type="submit"
-            className="hero-btn hero-btn-block cursor-pointer border-transparent bg-gradient-to-r from-cyan to-cyan-light font-semibold text-on-accent transition-opacity hover:opacity-90"
+            className="hero-btn hero-btn-block cursor-pointer border-transparent bg-cyan font-semibold text-ink transition-opacity hover:opacity-90"
           >
             {saved ? "Saved!" : "Save settings"}
           </button>

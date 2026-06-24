@@ -659,8 +659,7 @@
   }
 
   .dash-btn-primary {
-    @apply inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold text-on-accent transition-opacity;
-    background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan) 70%, #b396ea));
+    @apply inline-flex h-11 items-center justify-center rounded-full bg-cyan px-5 text-sm font-semibold text-ink transition-opacity;
   }
 
   .dash-btn-primary:hover {

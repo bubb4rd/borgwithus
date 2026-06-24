@@ -48,7 +48,7 @@ export default function AIFeatureCallout() {
 
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/75 sm:text-base">
               Describe your vibe and roll a custom BORG name with AI. Sign up
-              free to unlock it in the dashboard generator.
+              free to unlock it in the generator dashboard.
             </p>
 
             <span className="ai-cta-banner__btn">

@@ -29,17 +29,18 @@ function getRankStyles(embedded: boolean) {
     },
     2: {
       block: embedded
-        ? "h-28 sm:h-32 border-foreground/20 bg-gradient-to-t from-foreground/12 to-elevated"
-        : "h-32 sm:h-40 border-foreground/20 bg-gradient-to-t from-foreground/12 to-elevated",
+        ? "h-28 sm:h-32 border-magenta/20 bg-gradient-to-t from-magenta-light/45 to-magenta-light/10 dark:from-magenta-light/28 dark:to-magenta-light/5"
+        : "h-32 sm:h-40 border-magenta/20 bg-gradient-to-t from-magenta-light/45 to-magenta-light/10 dark:from-magenta-light/28 dark:to-magenta-light/5",
       medal:
-        "border border-foreground/25 bg-gradient-to-br from-foreground/20 to-foreground/5 text-foreground",
+        "border border-magenta/25 bg-magenta-light/70 text-foreground dark:border-magenta/30 dark:bg-magenta-light/25",
       label: "2nd",
     },
     3: {
       block: embedded
-        ? "h-20 sm:h-24 border-hazard/25 bg-gradient-to-t from-hazard/15 to-transparent"
-        : "h-24 sm:h-32 border-hazard/25 bg-gradient-to-t from-hazard/15 to-transparent",
-      medal: "bg-gradient-to-br from-cyan to-cyan-light text-on-accent",
+        ? "h-20 sm:h-24 border-cyan-dark/45 bg-gradient-to-t from-cyan-dark/35 to-cyan-dark/8 dark:border-cyan-light/45 dark:from-cyan-light/35 dark:to-cyan-light/8"
+        : "h-24 sm:h-32 border-cyan-dark/45 bg-gradient-to-t from-cyan-dark/35 to-cyan-dark/8 dark:border-cyan-light/45 dark:from-cyan-light/35 dark:to-cyan-light/8",
+      medal:
+        "bg-cyan-dark text-on-accent dark:bg-cyan-light",
       label: "3rd",
     },
   } as const;
@@ -239,9 +240,6 @@ export default function Leaderboard({
           data-reveal
           className={`${embedded ? "mb-5 text-left" : "mb-12 text-center"}`}
         >
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-magenta">
-            Community favorites
-          </p>
           <h2
             className={`font-bold text-foreground ${
               embedded ? "text-2xl" : "text-4xl md:text-5xl"

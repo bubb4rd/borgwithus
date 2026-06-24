@@ -9,7 +9,6 @@ export default function HistoryPage() {
   return (
     <DashboardShell>
       <DashboardPageHeader
-        eyebrow="Your activity"
         title="History"
         description="Full list of your saved likes and generator rolls."
       />

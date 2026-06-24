@@ -6,7 +6,6 @@ export default function LeaderboardPage() {
   return (
     <DashboardShell>
       <DashboardPageHeader
-        eyebrow="Community"
         title="Borg Hall of Fame"
         description="Top liked and top rated names from the community."
       />

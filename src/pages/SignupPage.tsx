@@ -115,7 +115,7 @@ export default function SignupPage() {
         <button
           type="submit"
           disabled={status === "loading"}
-          className="hero-btn hero-btn-block mt-2 border-transparent bg-gradient-to-r from-cyan to-cyan-light font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="hero-btn hero-btn-block mt-2 border-transparent bg-cyan font-semibold text-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {status === "loading" ? "Please wait..." : "Create account"}
         </button>

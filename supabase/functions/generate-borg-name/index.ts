@@ -287,7 +287,7 @@ async function callLocalModel(userMessage: string, extraInstruction = "") {
   const output = await response.json();
   const text = sanitizeModelName(extractModelText(output));
   if (!text) {
-    throw new Error("Local model returned an empty BORG name.");
+    throw new Error("BORG AI returned nothing. Try again.");
   }
 
   return text;

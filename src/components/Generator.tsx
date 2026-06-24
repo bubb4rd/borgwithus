@@ -90,7 +90,7 @@ function GeneratorCard({
 
   const generateButtonClasses =
     accent === "cyan"
-      ? "bg-gradient-to-r from-cyan to-cyan-light text-on-accent transition-transform hover:scale-[1.02] active:scale-[0.98]"
+      ? "bg-cyan text-ink transition-transform hover:scale-[1.02] active:scale-[0.98]"
       : "border border-magenta/35 bg-card text-magenta transition-colors hover:border-magenta/50 hover:bg-magenta/10 active:scale-[0.98]";
 
   const runGenerate = () => {

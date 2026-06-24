@@ -105,7 +105,7 @@ export default function SignupConfirmPage() {
           <Link
             to="/login"
             onClick={clearPendingEmailVerification}
-            className="hero-btn hero-btn-block border-transparent bg-gradient-to-r from-cyan to-cyan-light font-semibold text-on-accent transition-opacity hover:opacity-90"
+            className="hero-btn hero-btn-block border-transparent bg-cyan font-semibold text-ink transition-opacity hover:opacity-90"
           >
             Go to log in
           </Link>

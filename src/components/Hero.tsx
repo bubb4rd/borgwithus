@@ -131,7 +131,7 @@ export default function Hero() {
           <div className="hero-cta-row mt-10 flex max-w-full flex-wrap items-center gap-3 sm:gap-4">
             <Link
               to={user ? "/dashboard" : "/signup"}
-              className="hero-btn hero-btn-text border-transparent bg-gradient-to-r from-cyan to-cyan-light font-semibold text-on-accent transition-opacity hover:opacity-90"
+              className="hero-btn hero-btn-text border-transparent bg-cyan font-semibold text-ink transition-opacity hover:opacity-90"
             >
               {user ? "Dashboard" : "Sign up"}
             </Link>
