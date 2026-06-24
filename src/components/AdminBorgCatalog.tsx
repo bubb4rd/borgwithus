@@ -13,9 +13,10 @@ import {
   type BorgKind,
 } from "../lib/borgCatalog";
 import {
-  ADMIN_LIST_FILTER_ROW_CLASS,
   ADMIN_LIST_TABLE_CLASS,
+  matchesAdminSearch,
 } from "../lib/adminListLayout";
+import AdminListFilterBar from "./AdminListFilterBar";
 
 function KindBadge({ kind }: { kind: BorgKind }) {
   return (
@@ -57,10 +58,18 @@ type BorgCatalogFilter =
   | { mode: "kind"; value: BorgKind }
   | { mode: "tag"; value: string };
 
-function filterChipClass(active: boolean, activeClass: string) {
-  return `cursor-pointer rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
-    active ? activeClass : "bg-elevated/60 text-subtle hover:text-foreground"
-  }`;
+function catalogFilterValue(filter: BorgCatalogFilter) {
+  if (filter.mode === "all") return "all";
+  if (filter.mode === "kind") return `kind:${filter.value}`;
+  return `tag:${filter.value}`;
+}
+
+function catalogFilterFromValue(value: string): BorgCatalogFilter {
+  if (value === "all") return { mode: "all" };
+  if (value.startsWith("kind:")) {
+    return { mode: "kind", value: value.slice(5) as BorgKind };
+  }
+  return { mode: "tag", value: value.slice(4) };
 }
 
 function CatalogDetailModal({
@@ -267,6 +276,7 @@ function CatalogActionsMenu({
 export default function AdminBorgCatalog() {
   const [entries, setEntries] = useState<BorgCatalogEntry[]>([]);
   const [filter, setFilter] = useState<BorgCatalogFilter>({ mode: "all" });
+  const [searchQuery, setSearchQuery] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [detailEntry, setDetailEntry] = useState<BorgCatalogEntry | null>(null);
   const [menuEntryId, setMenuEntryId] = useState<string | null>(null);
@@ -283,13 +293,39 @@ export default function AdminBorgCatalog() {
 
   const customTags = useMemo(() => getCatalogCustomTags(entries), [entries]);
 
+  const filterOptions = useMemo(
+    () => [
+      { value: "all", label: "All" },
+      ...(["borg", "mio", "ai"] as const).map((kind) => ({
+        value: `kind:${kind}`,
+        label: BORG_KIND_LABELS[kind],
+      })),
+      ...customTags.map((tag) => ({
+        value: `tag:${tag}`,
+        label: formatTagLabel(tag),
+      })),
+    ],
+    [customTags],
+  );
+
   const visible = useMemo(() => {
-    if (filter.mode === "all") return entries;
-    if (filter.mode === "kind") {
-      return entries.filter((entry) => entry.kind === filter.value);
-    }
-    return entries.filter((entry) => getEntryCatalogTag(entry) === filter.value);
-  }, [entries, filter]);
+    const filtered =
+      filter.mode === "all"
+        ? entries
+        : filter.mode === "kind"
+          ? entries.filter((entry) => entry.kind === filter.value)
+          : entries.filter((entry) => getEntryCatalogTag(entry) === filter.value);
+
+    return filtered.filter((entry) =>
+      matchesAdminSearch(
+        searchQuery,
+        entry.name,
+        BORG_KIND_LABELS[entry.kind],
+        formatTagLabel(getEntryCatalogTag(entry)),
+        entry.tag,
+      ),
+    );
+  }, [entries, filter, searchQuery]);
 
   const handleRemove = async (entry: BorgCatalogEntry) => {
     if (!canRemoveEntry(entry) || removingId === entry.id) return;
@@ -309,44 +345,22 @@ export default function AdminBorgCatalog() {
 
   return (
     <>
-      <div className={ADMIN_LIST_FILTER_ROW_CLASS}>
-        <button
-          type="button"
-          onClick={() => setFilter({ mode: "all" })}
-          className={filterChipClass(filter.mode === "all", "admin-filter-chip-active")}
-        >
-          All
-        </button>
-        {(["borg", "mio", "ai"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setFilter({ mode: "kind", value })}
-            className={filterChipClass(
-              filter.mode === "kind" && filter.value === value,
-              "admin-filter-chip-active",
-            )}
-          >
-            {BORG_KIND_LABELS[value]}
-          </button>
-        ))}
-        {customTags.map((tag) => (
-          <button
-            key={tag}
-            type="button"
-            onClick={() => setFilter({ mode: "tag", value: tag })}
-            className={filterChipClass(
-              filter.mode === "tag" && filter.value === tag,
-              "admin-filter-chip-active",
-            )}
-          >
-            {formatTagLabel(tag)}
-          </button>
-        ))}
-      </div>
+      <AdminListFilterBar
+        options={filterOptions}
+        value={catalogFilterValue(filter)}
+        onChange={(value) => setFilter(catalogFilterFromValue(value))}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search names, types, tags…"
+        countLabel={`${visible.length} shown`}
+      />
 
       {visible.length === 0 ? (
-        <p className="px-5 py-6 text-sm text-subtle">No names in this filter yet.</p>
+        <p className="px-5 py-6 text-sm text-subtle">
+          {searchQuery.trim()
+            ? "No names match your search."
+            : "No names in this filter yet."}
+        </p>
       ) : (
         <ScrollHintList refreshDeps={[visible.length, entries.length, filter]}>
           <table className={`${ADMIN_LIST_TABLE_CLASS} min-w-[24rem]`}>

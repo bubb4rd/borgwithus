@@ -11,9 +11,12 @@ import {
 } from "../lib/adminAiGenerations";
 import { aiFeedbackUpdateEventName, type AIFeedback } from "../lib/aiFeedback";
 import {
-  ADMIN_LIST_FILTER_ROW_CLASS,
   ADMIN_LIST_TABLE_CLASS,
+  matchesAdminSearch,
 } from "../lib/adminListLayout";
+import AdminListFilterBar, {
+  type AdminListFilterOption,
+} from "./AdminListFilterBar";
 
 function ThumbsUpIcon() {
   return (
@@ -275,6 +278,7 @@ export default function AdminAiGenerationCenter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | AIFeedback | "none">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [catalogNames, setCatalogNames] = useState<Set<string>>(new Set());
   const [addingId, setAddingId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
@@ -310,10 +314,17 @@ export default function AdminAiGenerationCenter() {
   }, [loadGenerations, refreshCatalog]);
 
   const visible = useMemo(() => {
-    if (filter === "all") return rows;
-    if (filter === "none") return rows.filter((row) => row.feedback === null);
-    return rows.filter((row) => row.feedback === filter);
-  }, [filter, rows]);
+    const filtered =
+      filter === "all"
+        ? rows
+        : filter === "none"
+          ? rows.filter((row) => row.feedback === null)
+          : rows.filter((row) => row.feedback === filter);
+
+    return filtered.filter((row) =>
+      matchesAdminSearch(searchQuery, row.name, row.prompt, row.userName),
+    );
+  }, [filter, rows, searchQuery]);
 
   const handleQuickAdd = async (row: AdminAiGeneration) => {
     const normalized = row.name.trim().toLowerCase();
@@ -334,35 +345,24 @@ export default function AdminAiGenerationCenter() {
   const isInCatalog = (row: AdminAiGeneration) =>
     catalogNames.has(row.name.trim().toLowerCase()) || addedIds.has(row.id);
 
+  const filterOptions: AdminListFilterOption[] = [
+    { value: "all", label: "All" },
+    { value: "none", label: "Unrated" },
+    { value: "like", label: "Liked", activeClassName: "admin-like-badge" },
+    { value: "dislike", label: "Disliked" },
+  ];
+
   return (
     <>
-      <div className={ADMIN_LIST_FILTER_ROW_CLASS}>
-        {(["all", "none", "like", "dislike"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setFilter(value)}
-            className={`cursor-pointer rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
-              filter === value
-                ? value === "like"
-                  ? "admin-like-badge"
-                  : "admin-filter-chip-active"
-                : "bg-elevated/60 text-subtle hover:text-foreground"
-            }`}
-          >
-            {value === "all"
-              ? "All"
-              : value === "none"
-                ? "Unrated"
-                : value === "like"
-                  ? "Liked"
-                  : "Disliked"}
-          </button>
-        ))}
-        <span className="ml-auto self-center text-xs text-subtle">
-          {loading ? "Loading…" : `${visible.length} shown`}
-        </span>
-      </div>
+      <AdminListFilterBar
+        options={filterOptions}
+        value={filter}
+        onChange={(value) => setFilter(value as typeof filter)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search names, prompts, users…"
+        countLabel={loading ? "Loading…" : `${visible.length} shown`}
+      />
 
       {error ? (
         <p className="px-5 py-4 text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -370,7 +370,9 @@ export default function AdminAiGenerationCenter() {
         <p className="px-5 py-6 text-sm text-subtle">Loading AI generations…</p>
       ) : visible.length === 0 ? (
         <p className="px-5 py-6 text-sm text-subtle">
-          No AI generations yet. Users can rate names in the BORG AI generator.
+          {searchQuery.trim()
+            ? "No AI generations match your search."
+            : "No AI generations yet. Users can rate names in the BORG AI generator."}
         </p>
       ) : (
         <ScrollHintList

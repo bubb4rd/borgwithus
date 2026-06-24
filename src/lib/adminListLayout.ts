@@ -14,3 +14,14 @@ export const ADMIN_CATALOG_CHIP_CLASS =
   "dashboard-panel admin-catalog-chip flex flex-col";
 
 export const ADMIN_CATALOG_STACK_CLASS = "admin-catalog-stack flex flex-col gap-4";
+
+export function matchesAdminSearch(
+  query: string,
+  ...haystacks: Array<string | null | undefined>
+) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+  return haystacks.some((value) =>
+    value?.toLowerCase().includes(normalized),
+  );
+}

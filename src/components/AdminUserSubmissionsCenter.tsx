@@ -6,9 +6,10 @@ import {
   getFullCatalog,
 } from "../lib/borgCatalog";
 import {
-  ADMIN_LIST_FILTER_ROW_CLASS,
   ADMIN_LIST_TABLE_CLASS,
+  matchesAdminSearch,
 } from "../lib/adminListLayout";
+import AdminListFilterBar from "./AdminListFilterBar";
 import {
   getUserSubmissions,
   removeUserSubmission,
@@ -80,12 +81,6 @@ function StatusBadge({ status }: { status: UserSubmissionStatus }) {
       {STATUS_LABELS[status]}
     </span>
   );
-}
-
-function filterChipClass(active: boolean) {
-  return `cursor-pointer rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
-    active ? "admin-filter-chip-active" : "bg-elevated/60 text-subtle hover:text-foreground"
-  }`;
 }
 
 function SubmissionDetailModal({
@@ -270,6 +265,7 @@ function SubmissionActionsMenu({
 export default function AdminUserSubmissionsCenter() {
   const [rows, setRows] = useState<UserSubmission[]>([]);
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [catalogNames, setCatalogNames] = useState<Set<string>>(new Set());
   const [addingId, setAddingId] = useState<string | null>(null);
   const [detailRow, setDetailRow] = useState<UserSubmission | null>(null);
@@ -294,9 +290,20 @@ export default function AdminUserSubmissionsCenter() {
   }, [refresh]);
 
   const visible = useMemo(() => {
-    if (filter === "all") return rows;
-    return rows.filter((row) => row.status === filter);
-  }, [filter, rows]);
+    const filtered =
+      filter === "all" ? rows : rows.filter((row) => row.status === filter);
+
+    return filtered.filter((row) =>
+      matchesAdminSearch(
+        searchQuery,
+        row.name,
+        row.userName,
+        row.userId,
+        row.note,
+        STATUS_LABELS[row.status],
+      ),
+    );
+  }, [filter, rows, searchQuery]);
 
   const handleApprove = async (row: UserSubmission) => {
     const normalized = row.name.trim().toLowerCase();
@@ -326,27 +333,26 @@ export default function AdminUserSubmissionsCenter() {
 
   return (
     <>
-      <div className={ADMIN_LIST_FILTER_ROW_CLASS}>
-        {STATUS_FILTERS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setFilter(value)}
-            className={filterChipClass(filter === value)}
-          >
-            {value === "all" ? "All" : STATUS_LABELS[value]}
-          </button>
-        ))}
-        <span className="ml-auto self-center text-xs text-subtle">
-          {visible.length} shown
-        </span>
-      </div>
+      <AdminListFilterBar
+        options={STATUS_FILTERS.map((value) => ({
+          value,
+          label: value === "all" ? "All" : STATUS_LABELS[value],
+        }))}
+        value={filter}
+        onChange={(value) => setFilter(value as StatusFilter)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search names, users, notes…"
+        countLabel={`${visible.length} shown`}
+      />
 
       {visible.length === 0 ? (
         <p className="px-5 py-6 text-sm text-subtle">
-          {rows.length === 0
-            ? "No user submissions yet."
-            : "No submissions match this filter."}
+          {searchQuery.trim()
+            ? "No submissions match your search."
+            : rows.length === 0
+              ? "No user submissions yet."
+              : "No submissions match this filter."}
         </p>
       ) : (
         <ScrollHintList refreshDeps={[visible.length, filter, rows.length]}>
