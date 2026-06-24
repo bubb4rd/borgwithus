@@ -304,7 +304,7 @@ export default function AdminUserSubmissionsCenter() {
 
     setAddingId(row.id);
     try {
-      await addCatalogEntry({ name: row.name.trim(), kind: "borg", tag: "original" });
+      await addCatalogEntry({ name: row.name.trim(), kind: "borg", tag: "user" });
       updateUserSubmissionStatus(row.id, "approved");
       refresh();
     } catch {
