@@ -209,7 +209,7 @@ function GeneratorCard({
                 className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
                   liked
                     ? "cursor-default border-cyan/40 bg-cyan/20 text-cyan opacity-80"
-                    : "cursor-pointer border-cyan/30 bg-cyan/10 text-cyan hover:bg-cyan/20"
+                    : "cursor-pointer border-border bg-card text-muted hover:border-cyan/30 hover:bg-hover hover:text-foreground"
                 } disabled:pointer-events-none`}
               >
                 <svg

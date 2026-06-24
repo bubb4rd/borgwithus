@@ -126,3 +126,57 @@ $$;
 
 revoke all on function public.admin_list_ai_feedback() from public;
 grant execute on function public.admin_list_ai_feedback() to authenticated;
+
+-- All AI generator rolls for the admin lab, with optional like/dislike feedback.
+create or replace function public.admin_list_ai_generations()
+returns table (
+  id uuid,
+  user_id uuid,
+  user_name text,
+  name text,
+  prompt text,
+  feedback text,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select
+    r.id,
+    r.user_id,
+    coalesce(
+      p.name,
+      nullif(split_part(u.email, '@', 1), ''),
+      'User'
+    ) as user_name,
+    r.name,
+    coalesce(f.prompt, '') as prompt,
+    f.feedback,
+    coalesce(f.created_at, r.rolled_at) as created_at,
+    coalesce(f.updated_at, r.rolled_at) as updated_at
+  from public.user_rolls r
+  left join public.profiles p on p.id = r.user_id
+  left join auth.users u on u.id = r.user_id
+  left join lateral (
+    select
+      f2.prompt,
+      f2.feedback,
+      f2.created_at,
+      f2.updated_at
+    from public.borg_ai_feedback f2
+    where f2.user_id = r.user_id
+      and lower(f2.name) = lower(r.name)
+    order by f2.updated_at desc
+    limit 1
+  ) f on true
+  where public.current_user_is_admin()
+    and r.roll_type = 'ai'
+  order by r.rolled_at desc
+  limit 500;
+$$;
+
+revoke all on function public.admin_list_ai_generations() from public;
+grant execute on function public.admin_list_ai_generations() to authenticated;

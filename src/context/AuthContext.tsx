@@ -95,7 +95,6 @@ async function applyAuthUser(
 
   if (next?.id && isSupabaseConfigured) {
     await hydrateUserDataFromSupabase(next.id);
-    await hydrateSharedBorgData();
   }
 }
 
@@ -112,6 +111,11 @@ async function resolveAuthUser(
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    void hydrateSharedBorgData();
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {

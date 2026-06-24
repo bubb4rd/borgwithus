@@ -53,7 +53,19 @@ function ThumbsDownIcon() {
   );
 }
 
-function FeedbackIcon({ feedback }: { feedback: AIFeedback }) {
+function FeedbackIcon({ feedback }: { feedback: AIFeedback | null }) {
+  if (!feedback) {
+    return (
+      <span
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-elevated/60 text-subtle"
+        aria-label="No rating"
+        title="No rating"
+      >
+        <span className="text-base font-medium leading-none">−</span>
+      </span>
+    );
+  }
+
   const isLike = feedback === "like";
 
   return (
@@ -202,7 +214,11 @@ function AiGenerationDetailModal({
               Rating
             </dt>
             <dd className="mt-1">
-              <FeedbackIcon feedback={row.feedback} />
+              {row.feedback ? (
+                <FeedbackIcon feedback={row.feedback} />
+              ) : (
+                <span className="text-subtle">No rating yet</span>
+              )}
             </dd>
           </div>
           <div>
@@ -221,7 +237,7 @@ function AiGenerationDetailModal({
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-subtle">
-              Rated
+              {row.feedback ? "Rated" : "Generated"}
             </dt>
             <dd className="mt-1 text-foreground">{formatWhenFull(row.updatedAt)}</dd>
           </div>
@@ -258,7 +274,7 @@ export default function AdminAiGenerationCenter() {
   const [rows, setRows] = useState<AdminAiGeneration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | AIFeedback>("all");
+  const [filter, setFilter] = useState<"all" | AIFeedback | "none">("all");
   const [catalogNames, setCatalogNames] = useState<Set<string>>(new Set());
   const [addingId, setAddingId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
@@ -295,6 +311,7 @@ export default function AdminAiGenerationCenter() {
 
   const visible = useMemo(() => {
     if (filter === "all") return rows;
+    if (filter === "none") return rows.filter((row) => row.feedback === null);
     return rows.filter((row) => row.feedback === filter);
   }, [filter, rows]);
 
@@ -320,7 +337,7 @@ export default function AdminAiGenerationCenter() {
   return (
     <>
       <div className={ADMIN_LIST_FILTER_ROW_CLASS}>
-        {(["all", "like", "dislike"] as const).map((value) => (
+        {(["all", "none", "like", "dislike"] as const).map((value) => (
           <button
             key={value}
             type="button"
@@ -333,7 +350,13 @@ export default function AdminAiGenerationCenter() {
                 : "bg-elevated/60 text-subtle hover:text-foreground"
             }`}
           >
-            {value === "all" ? "All" : value === "like" ? "Liked" : "Disliked"}
+            {value === "all"
+              ? "All"
+              : value === "none"
+                ? "Unrated"
+                : value === "like"
+                  ? "Liked"
+                  : "Disliked"}
           </button>
         ))}
         <span className="ml-auto self-center text-xs text-subtle">
