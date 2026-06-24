@@ -55,7 +55,7 @@ export default function DashboardNavbar() {
       <nav className="dash-nav-inner">
         <Link
           to="/dashboard"
-          className="dash-nav-item text-base font-semibold tracking-tight text-foreground transition-colors hover:text-cyan md:text-lg"
+          className="dash-nav-item min-w-0 shrink text-base font-semibold tracking-tight text-foreground transition-colors hover:text-cyan md:text-lg"
         >
           borg<span className="text-cyan">with</span>us
           <span className="ml-2 hidden text-xs font-medium text-subtle sm:inline">
@@ -78,7 +78,7 @@ export default function DashboardNavbar() {
           <UserMenu />
         </div>
 
-        <div className="md:hidden">
+        <div className="shrink-0 md:hidden">
           <HamburgerButton
             open={open}
             onClick={toggleMenu}

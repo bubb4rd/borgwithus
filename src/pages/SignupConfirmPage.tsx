@@ -70,14 +70,14 @@ export default function SignupConfirmPage() {
       <div ref={pageRef} className="text-center">
         <div className="confirm-badge relative mx-auto mb-6 flex h-20 w-20 items-center justify-center">
           <span
-            className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan/25 to-sky-400/25 blur-md"
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan/25 to-cyan-light/25 blur-md"
             aria-hidden
           />
           <span
             className="absolute inset-0 rounded-full border border-cyan/30"
             aria-hidden
           />
-          <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-sky-400 shadow-lg shadow-cyan/25">
+          <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan-light shadow-lg shadow-cyan/25">
             <CheckIcon />
           </span>
         </div>
@@ -105,7 +105,7 @@ export default function SignupConfirmPage() {
           <Link
             to="/login"
             onClick={clearPendingEmailVerification}
-            className="hero-btn hero-btn-block border-transparent bg-gradient-to-r from-cyan to-sky-400 font-semibold text-on-accent transition-opacity hover:opacity-90"
+            className="hero-btn hero-btn-block border-transparent bg-gradient-to-r from-cyan to-cyan-light font-semibold text-on-accent transition-opacity hover:opacity-90"
           >
             Go to log in
           </Link>

@@ -14,13 +14,17 @@
   --bg-hover: rgba(0, 0, 0, 0.04);
   --bg-badge: rgba(0, 0, 0, 0.03);
   --text-on-accent: #ffffff;
-  --accent-cyan: #0891b2;
-  --accent-magenta: #c026d3;
-  --accent-lime: #65a30d;
-  --accent-hazard: #ea580c;
-  --site-gradient-1: rgba(8, 145, 178, 0.1);
-  --site-gradient-2: rgba(192, 38, 211, 0.07);
-  --site-gradient-3: rgba(56, 189, 248, 0.06);
+  --accent-cyan: #7e4ecf;
+  --accent-cyan-light: #966ddf;
+  --accent-cyan-dark: #5a3593;
+  --accent-magenta: #966ddf;
+  --accent-magenta-light: #d0bff3;
+  --accent-lime: #7e4ecf;
+  --accent-hazard: #6a3cb4;
+  --botd-star: #ea580c;
+  --site-gradient-1: rgba(126, 78, 207, 0.1);
+  --site-gradient-2: rgba(150, 109, 223, 0.07);
+  --site-gradient-3: rgba(179, 150, 234, 0.06);
   color-scheme: light;
 }
 
@@ -35,14 +39,18 @@
   --bg-elevated: rgba(0, 0, 0, 0.25);
   --bg-hover: rgba(255, 255, 255, 0.06);
   --bg-badge: rgba(255, 255, 255, 0.05);
-  --text-on-accent: #09090b;
-  --accent-cyan: #22d3ee;
-  --accent-magenta: #e879f9;
-  --accent-lime: #a3e635;
-  --accent-hazard: #fb923c;
-  --site-gradient-1: rgba(34, 211, 238, 0.07);
-  --site-gradient-2: rgba(232, 121, 249, 0.05);
-  --site-gradient-3: rgba(56, 189, 248, 0.04);
+  --text-on-accent: #ffffff;
+  --accent-cyan: #b396ea;
+  --accent-cyan-light: #7e4ecf;
+  --accent-cyan-dark: #966ddf;
+  --accent-magenta: #b396ea;
+  --accent-magenta-light: #e5dbf9;
+  --accent-lime: #b396ea;
+  --accent-hazard: #966ddf;
+  --botd-star: #fb923c;
+  --site-gradient-1: rgba(179, 150, 234, 0.07);
+  --site-gradient-2: rgba(150, 109, 223, 0.05);
+  --site-gradient-3: rgba(208, 191, 243, 0.04);
   color-scheme: dark;
 }
 
@@ -59,10 +67,25 @@
   --color-hover: var(--bg-hover);
   --color-badge: var(--bg-badge);
   --color-on-accent: var(--text-on-accent);
+  --color-gigas-50: #f9f7fd;
+  --color-gigas-100: #f1ebfc;
+  --color-gigas-200: #e5dbf9;
+  --color-gigas-300: #d0bff3;
+  --color-gigas-400: #b396ea;
+  --color-gigas-500: #966ddf;
+  --color-gigas-600: #7e4ecf;
+  --color-gigas-700: #6a3cb4;
+  --color-gigas-800: #5a3593;
+  --color-gigas-900: #4a2c77;
+  --color-gigas-950: #2f1556;
   --color-cyan: var(--accent-cyan);
+  --color-cyan-light: var(--accent-cyan-light);
+  --color-cyan-dark: var(--accent-cyan-dark);
   --color-magenta: var(--accent-magenta);
+  --color-magenta-light: var(--accent-magenta-light);
   --color-lime: var(--accent-lime);
   --color-hazard: var(--accent-hazard);
+  --color-botd-star: var(--botd-star);
 }
 
 @layer base {
@@ -102,6 +125,11 @@
     margin-inline: auto;
     width: 100%;
     max-width: 72rem;
+  }
+
+  /* width: 100% + fixed insets overflows the viewport; let left/right define width */
+  .fixed.site-container {
+    width: auto;
   }
 
   @media (min-width: 1536px) {
@@ -158,7 +186,7 @@
   }
 
   .dashboard-panel {
-    @apply rounded-3xl border border-border bg-card;
+    @apply min-w-0 rounded-3xl border border-border bg-card;
   }
 
   .dashboard-panel-interactive {
@@ -182,6 +210,11 @@
     --admin-chip-active-bg: #e4e4e7;
     --admin-chip-active-text: #18181b;
     --admin-table-header: #ebebed;
+    --admin-like: #46c36c;
+    --admin-like-light: #6dd18a;
+    --admin-like-dark: #2a7342;
+    --admin-like-soft: color-mix(in srgb, #46c36c 14%, transparent);
+    --admin-like-border: color-mix(in srgb, #46c36c 30%, transparent);
     --dash-green: #71717a;
     --dash-green-dark: #52525b;
     --dash-green-soft: #f4f4f5;
@@ -206,6 +239,11 @@
     --admin-chip-active-bg: #3f3f46;
     --admin-chip-active-text: #f4f4f5;
     --admin-table-header: #323238;
+    --admin-like: #5dd07f;
+    --admin-like-light: #7ad996;
+    --admin-like-dark: #3aab5c;
+    --admin-like-soft: color-mix(in srgb, #5dd07f 18%, transparent);
+    --admin-like-border: color-mix(in srgb, #5dd07f 35%, transparent);
     --dash-green: #a1a1aa;
     --dash-green-dark: #d4d4d8;
     --dash-green-soft: rgba(255, 255, 255, 0.06);
@@ -220,6 +258,24 @@
 
   .admin-bg .dash-eyebrow {
     color: var(--dash-muted);
+  }
+
+  .admin-bg .text-admin-like {
+    color: var(--admin-like);
+  }
+
+  .admin-bg .admin-like-badge {
+    border: 1px solid var(--admin-like-border);
+    background: var(--admin-like-soft);
+    color: var(--admin-like);
+  }
+
+  .admin-bg .bg-admin-like {
+    background: var(--admin-like);
+  }
+
+  .admin-bg .admin-botd-like-label {
+    color: var(--admin-like);
   }
 
   .admin-bg .dash-btn-primary {
@@ -258,16 +314,16 @@
   }
 
   .admin-ai-added-btn {
-    border: 1px solid color-mix(in srgb, #d9f99d 42%, var(--dash-border));
-    background: color-mix(in srgb, #d9f99d 30%, transparent);
-    color: color-mix(in srgb, #4d7c0f 55%, var(--text-muted));
+    border: 1px solid color-mix(in srgb, #e5dbf9 42%, var(--dash-border));
+    background: color-mix(in srgb, #e5dbf9 30%, transparent);
+    color: color-mix(in srgb, #5a3593 55%, var(--text-muted));
     cursor: default;
   }
 
   .dark .admin-ai-added-btn {
-    border-color: color-mix(in srgb, #d9f99d 28%, var(--dash-border));
-    background: color-mix(in srgb, #d9f99d 14%, transparent);
-    color: color-mix(in srgb, #d9f99d 52%, var(--text-muted));
+    border-color: color-mix(in srgb, #e5dbf9 28%, var(--dash-border));
+    background: color-mix(in srgb, #e5dbf9 14%, transparent);
+    color: color-mix(in srgb, #d0bff3 52%, var(--text-muted));
   }
 
   .admin-ai-added-subtle {
@@ -461,14 +517,14 @@
     border: 1px solid color-mix(in srgb, var(--accent-cyan) 42%, transparent);
     background: linear-gradient(
       140deg,
-      color-mix(in srgb, var(--accent-cyan) 92%, #0c4a6e),
-      color-mix(in srgb, #38bdf8 88%, var(--accent-cyan)) 55%,
-      color-mix(in srgb, var(--accent-cyan) 75%, #0e7490)
+      color-mix(in srgb, var(--accent-cyan) 92%, #4a2c77),
+      color-mix(in srgb, #b396ea 88%, var(--accent-cyan)) 55%,
+      color-mix(in srgb, var(--accent-cyan) 75%, #5a3593)
     );
     box-shadow:
       0 16px 40px -14px color-mix(in srgb, var(--accent-cyan) 50%, transparent),
       inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
-    color: #f0fdfa;
+    color: #f9f7fd;
   }
 
   .dark .admin-bg .admin-lifetime-borgs-chip {
@@ -604,7 +660,7 @@
 
   .dash-btn-primary {
     @apply inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold text-on-accent transition-opacity;
-    background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan) 70%, #38bdf8));
+    background: linear-gradient(135deg, var(--accent-cyan), color-mix(in srgb, var(--accent-cyan) 70%, #b396ea));
   }
 
   .dash-btn-primary:hover {
@@ -660,6 +716,98 @@
 
   .glow-magenta-soft {
     box-shadow: 0 0 22px color-mix(in srgb, var(--accent-magenta) 9%, transparent);
+  }
+
+  .ai-cta-banner {
+    position: relative;
+    isolation: isolate;
+    display: block;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    background: #0c0c0e;
+    color: #fafafa;
+  }
+
+  .ai-cta-banner__glow {
+    pointer-events: none;
+    position: absolute;
+    inset: -8%;
+    background:
+      radial-gradient(
+        ellipse 52% 92% at 86% 56%,
+        color-mix(in srgb, #966ddf 72%, transparent),
+        transparent 66%
+      ),
+      radial-gradient(
+        ellipse 48% 78% at 94% 86%,
+        color-mix(in srgb, #6a3cb4 68%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 44% 72% at 76% 16%,
+        color-mix(in srgb, #b396ea 58%, transparent),
+        transparent 58%
+      );
+    filter: blur(22px);
+    transform: scale(1.04);
+  }
+
+  .ai-cta-banner__shade {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      #0c0c0e 0%,
+      #0c0c0e 38%,
+      color-mix(in srgb, #0c0c0e 90%, transparent) 58%,
+      transparent 100%
+    );
+  }
+
+  .ai-cta-banner__content {
+    position: relative;
+    z-index: 1;
+    max-width: 36rem;
+    padding: 2rem 1.75rem;
+  }
+
+  @media (min-width: 640px) {
+    .ai-cta-banner__content {
+      padding: 2.5rem 2.5rem;
+    }
+  }
+
+  .ai-cta-banner__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1.5rem;
+    border-radius: 9999px;
+    background: #ffffff;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    color: #18181b;
+    transition: opacity 0.2s ease;
+  }
+
+  .ai-cta-banner:hover .ai-cta-banner__btn {
+    opacity: 0.92;
+  }
+
+  .mobile-nav-drawer {
+    transition:
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-nav-drawer {
+      transition: none;
+    }
   }
 
   .generator-section {

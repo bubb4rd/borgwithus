@@ -68,7 +68,7 @@ export default function AdminBorgsPanel({
         <button
           type="button"
           onClick={() => setShowAddForm(true)}
-          className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-gradient-to-br from-cyan to-sky-400 px-4 text-sm font-semibold text-on-accent shadow-md transition hover:opacity-90"
+          className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full bg-gradient-to-br from-cyan to-cyan-light px-4 text-sm font-semibold text-on-accent shadow-md transition hover:opacity-90"
           aria-label="Add name"
           title="Add name"
         >

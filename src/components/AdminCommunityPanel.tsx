@@ -428,7 +428,9 @@ export default function AdminCommunityPanel({
           <FilterIcon />
           {hasActiveFilters ? (
             <span
-              className="absolute right-2 top-2 h-2 w-2 rounded-full bg-cyan"
+              className={`absolute right-2 top-2 h-2 w-2 rounded-full ${
+                view === "likes" ? "bg-admin-like" : "bg-[var(--dash-foreground)]"
+              }`}
               aria-hidden
             />
           ) : null}
@@ -466,7 +468,7 @@ export default function AdminCommunityPanel({
           headers={["Borg name", "Likes"]}
           rows={filteredLikes.map((row) => [
             row.name,
-            <span className="tabular-nums">{row.likes}</span>,
+            <span className="tabular-nums text-admin-like">{row.likes}</span>,
           ])}
         />
       )}

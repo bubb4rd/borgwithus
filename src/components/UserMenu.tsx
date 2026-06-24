@@ -58,7 +58,7 @@ export default function UserMenu({ dropUp = false }: { dropUp?: boolean }) {
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="Account menu"
-        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-cyan-800 text-white transition-opacity hover:opacity-90"
+        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-cyan-dark text-white transition-opacity hover:opacity-90"
       >
         <svg
           width={20}

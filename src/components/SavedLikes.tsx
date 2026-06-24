@@ -43,11 +43,11 @@ export default function SavedLikes({
   const hasMore = limit !== undefined && likes.length > limit;
 
   const likesList = (
-    <ul className="space-y-3">
+    <ul className="min-w-0 space-y-3">
       {visible.map((like) => (
         <li
           key={like.id}
-          className="rounded-2xl border border-border bg-elevated p-3"
+          className="min-w-0 rounded-2xl border border-border bg-elevated p-3"
         >
           <div className="flex items-center gap-2 min-w-0">
             <span className="min-w-0 truncate font-semibold text-foreground">
@@ -83,7 +83,7 @@ export default function SavedLikes({
   return (
     <section
       id="saved-likes"
-      className={`dashboard-panel flex flex-col p-5 ${
+      className={`dashboard-panel flex min-w-0 flex-col overflow-hidden p-5 ${
         scrollable && !scrollHeight ? "h-full min-h-0 overflow-hidden" : "h-full"
       }`}
     >

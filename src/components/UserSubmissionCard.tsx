@@ -67,7 +67,7 @@ export default function UserSubmissionCard() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-auto inline-flex h-11 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-cyan to-sky-400 px-5 text-sm font-semibold text-on-accent shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-auto inline-flex h-11 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan-light px-5 text-sm font-semibold text-on-accent shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Submitting…" : "Submit name"}
           </button>

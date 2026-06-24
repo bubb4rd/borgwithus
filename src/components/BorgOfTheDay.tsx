@@ -64,6 +64,7 @@ function AdminBotdSection({
           <StarRating
             value={averageRating}
             size="xl"
+            starClassName="text-botd-star"
             className="admin-botd-stars min-w-0 shrink"
           />
           <p className="admin-botd-rating-score m-0 text-base font-bold tabular-nums leading-none text-foreground">
@@ -73,7 +74,7 @@ function AdminBotdSection({
         <p className="admin-botd-rating-label m-0 truncate text-sm font-bold leading-tight text-muted">
           {ratingText}
         </p>
-        <p className="admin-botd-like-label m-0 truncate text-sm font-bold leading-tight tabular-nums text-cyan">
+        <p className="admin-botd-like-label m-0 truncate text-sm font-bold leading-tight tabular-nums">
           {likeText}
         </p>
       </div>
@@ -90,7 +91,7 @@ function AdminBotdSection({
       </h2>
       {meta && <p className="mt-[0.2rem] text-[0.6875rem] text-muted">{meta}</p>}
       <div className="mt-[0.35rem] flex flex-wrap items-center gap-1.5">
-        <StarRating value={averageRating} size="sm" />
+        <StarRating value={averageRating} size="sm" starClassName="text-botd-star" />
         <p className="text-base font-bold tabular-nums text-foreground">
           {ratingCount > 0 ? averageRating.toFixed(1) : "—"}
         </p>
@@ -222,6 +223,7 @@ export default function BorgOfTheDay({ admin = false }: { admin?: boolean }) {
         <StarRating
           size="lg"
           value={stats.rating}
+          starClassName="text-botd-star"
           onChange={stats.rated ? undefined : handleRate}
         />
       </div>

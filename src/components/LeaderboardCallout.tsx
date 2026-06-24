@@ -213,7 +213,7 @@ export default function LeaderboardCallout() {
         to="/dashboard/leaderboard"
         className="mt-auto pt-4 text-center text-sm font-medium text-cyan transition-colors hover:underline"
       >
-        View full leaderboard →
+        View full leaderboard
       </Link>
     </section>
   );

@@ -3,6 +3,7 @@ type StarRatingProps = {
   onChange?: (rating: number) => void;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  starClassName?: string;
 };
 
 function StarIcon({ size }: { size: number }) {
@@ -24,6 +25,7 @@ export default function StarRating({
   onChange,
   size = "md",
   className = "",
+  starClassName = "text-hazard",
 }: StarRatingProps) {
   const starSize =
     size === "sm" ? 14 : size === "lg" ? 22 : size === "xl" ? 28 : 18;
@@ -52,7 +54,7 @@ export default function StarRating({
               onClick={() => onChange?.(star)}
               aria-label={`${star} star${star > 1 ? "s" : ""}`}
               className={`cursor-pointer transition-colors hover:scale-110 ${
-                fill ? "text-hazard" : "text-border"
+                fill ? starClassName : "text-border"
               }`}
             >
               <StarIcon size={starSize} />
@@ -67,7 +69,7 @@ export default function StarRating({
             </span>
             {fill > 0 && (
               <span
-                className="absolute inset-0 overflow-hidden text-hazard"
+                className={`absolute inset-0 overflow-hidden ${starClassName}`}
                 style={{ width: `${fill * 100}%` }}
               >
                 <StarIcon size={starSize} />

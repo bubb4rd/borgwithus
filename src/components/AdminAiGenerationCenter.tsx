@@ -58,10 +58,8 @@ function FeedbackIcon({ feedback }: { feedback: AIFeedback }) {
 
   return (
     <span
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${
-        isLike
-          ? "border-lime/30 bg-lime/10 text-lime"
-          : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300"
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${
+        isLike ? "admin-like-badge" : "border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300"
       }`}
       aria-label={isLike ? "Liked" : "Disliked"}
       title={isLike ? "Liked" : "Disliked"}
@@ -329,7 +327,9 @@ export default function AdminAiGenerationCenter() {
             onClick={() => setFilter(value)}
             className={`cursor-pointer rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
               filter === value
-                ? "admin-filter-chip-active"
+                ? value === "like"
+                  ? "admin-like-badge"
+                  : "admin-filter-chip-active"
                 : "bg-elevated/60 text-subtle hover:text-foreground"
             }`}
           >

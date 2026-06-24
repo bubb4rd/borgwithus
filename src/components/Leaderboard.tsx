@@ -24,7 +24,7 @@ function getRankStyles(embedded: boolean) {
       block: embedded
         ? "h-36 sm:h-40 border-cyan/30 bg-gradient-to-t from-cyan/20 to-cyan/5"
         : "h-44 sm:h-52 border-cyan/30 bg-gradient-to-t from-cyan/20 to-cyan/5 glow-cyan",
-      medal: "bg-gradient-to-br from-cyan to-sky-400 text-on-accent",
+      medal: "bg-gradient-to-br from-cyan to-cyan-light text-on-accent",
       label: "1st",
     },
     2: {
@@ -39,7 +39,7 @@ function getRankStyles(embedded: boolean) {
       block: embedded
         ? "h-20 sm:h-24 border-hazard/25 bg-gradient-to-t from-hazard/15 to-transparent"
         : "h-24 sm:h-32 border-hazard/25 bg-gradient-to-t from-hazard/15 to-transparent",
-      medal: "bg-gradient-to-br from-hazard to-orange-400 text-on-accent",
+      medal: "bg-gradient-to-br from-cyan to-cyan-light text-on-accent",
       label: "3rd",
     },
   } as const;
@@ -277,16 +277,31 @@ export default function Leaderboard({
             ))}
           </div>
 
-          {metric === "rating" && !user && (
+          {!user && (
             <p className={`text-xs text-subtle sm:text-sm ${embedded ? "mb-4" : "mb-6 text-center"}`}>
-              Ratings are submitted by signed-up members.{" "}
-              <Link
-                to="/signup"
-                className="text-cyan transition-colors hover:underline"
-              >
-                Sign up
-              </Link>{" "}
-              to rate names.
+              {metric === "likes" ? (
+                <>
+                  Likes are submitted by signed-up members.{" "}
+                  <Link
+                    to="/signup"
+                    className="text-cyan transition-colors hover:underline"
+                  >
+                    Sign up
+                  </Link>{" "}
+                  to like names.
+                </>
+              ) : (
+                <>
+                  Ratings are submitted by signed-up members.{" "}
+                  <Link
+                    to="/signup"
+                    className="text-cyan transition-colors hover:underline"
+                  >
+                    Sign up
+                  </Link>{" "}
+                  to rate names.
+                </>
+              )}
             </p>
           )}
 

@@ -172,7 +172,7 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
                   onClick={handleGenerate}
                   disabled={status === "loading" || limitReached}
                   aria-label={result ? "Re-generate name" : "Generate name"}
-                  className="absolute bottom-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-gradient-to-br from-magenta to-fuchsia-500 text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="absolute bottom-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-gradient-to-br from-magenta to-magenta-light text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {status === "loading" ? (
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -317,7 +317,7 @@ export default function AIGenerator({ embedded = false }: { embedded?: boolean }
             type="button"
             onClick={handleGenerate}
             disabled={status === "loading" || limitReached}
-            className="mt-4 cursor-pointer rounded-full bg-gradient-to-r from-magenta to-fuchsia-400 px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-4 cursor-pointer rounded-full bg-gradient-to-r from-magenta to-magenta-light px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === "loading" ? (
               <BorgingIndicator compact showStatus={false} />

@@ -14,7 +14,6 @@ const links = [
   { href: "/#how-to", label: "How to BORG" },
   { href: "/#about", label: "What is BORG" },
   { href: "/#generator", label: "Generator" },
-  { href: "/#contact", label: "Contact" },
 ];
 
 const MOBILE_NAV_ID = "public-mobile-nav";

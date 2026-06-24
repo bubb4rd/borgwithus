@@ -47,16 +47,22 @@ type MobileNavDrawerProps = {
   id: string;
   open: boolean;
   onClose: () => void;
-  title?: string;
   children: ReactNode;
   footer: ReactNode;
 };
+
+function MobileNavWordmark() {
+  return (
+    <p className="text-lg font-semibold tracking-tight text-foreground">
+      borg<span className="text-cyan">with</span>us
+    </p>
+  );
+}
 
 export function MobileNavDrawer({
   id,
   open,
   onClose,
-  title = "Menu",
   children,
   footer,
 }: MobileNavDrawerProps) {
@@ -70,37 +76,29 @@ export function MobileNavDrawer({
 
   return createPortal(
     <div className="md:hidden">
-      <div
-        className={`fixed inset-0 z-[60] bg-black/50 transition-opacity duration-300 motion-reduce:transition-none ${
-          open
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
-        }`}
-        onClick={onClose}
-        aria-hidden={!open}
-      />
-
       <aside
         id={id}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label="borgwithus"
         aria-hidden={!open}
         inert={open ? undefined : true}
-        className={`fixed right-0 top-0 z-[70] flex h-dvh w-[min(100%,18rem)] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none ${
-          open ? "translate-x-0" : "translate-x-full"
+        className={`mobile-nav-drawer fixed inset-0 z-[70] flex h-dvh max-h-dvh min-h-0 w-full flex-col border-border bg-card/95 shadow-2xl backdrop-blur-3xl backdrop-brightness-90 motion-reduce:transition-none supports-[backdrop-filter]:bg-card/85 ${
+          open
+            ? "translate-x-0 opacity-100"
+            : "pointer-events-none translate-x-full opacity-0"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+          <MobileNavWordmark />
           <HamburgerButton open onClick={onClose} controlsId={id} />
         </div>
 
-        <nav className="flex-1 overflow-y-auto overscroll-contain p-3">
+        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-4">
           {children}
         </nav>
 
-        <div className="relative flex shrink-0 items-center justify-between gap-3 overflow-visible border-t border-border p-4">
+        <div className="relative flex shrink-0 items-center justify-between gap-3 overflow-visible border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <ThemeToggle />
           {footer}
         </div>

@@ -67,11 +67,14 @@ function GeneratorCard({
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLParagraphElement>(null);
+  const likedRef = useRef(false);
   const reducedMotion = useReducedMotion();
   const { user } = useAuth();
-  const [pendingName, setPendingName] = useState<string | null>(null);
-  const [likedName, setLikedName] = useState<string | null>(null);
+  const [rolledName, setRolledName] = useState<string | null>(null);
+  const [liked, setLiked] = useState(false);
   const canLike = likable && Boolean(user);
+  const showInlineActions = likable && rolledName;
+  const likeDisabled = liked || !rolledName;
 
   const accentClasses = compact
     ? accent === "cyan"
@@ -85,18 +88,19 @@ function GeneratorCard({
     ? "dashboard-panel p-4"
     : "rounded-3xl border p-6 backdrop-blur-sm md:p-8";
 
-  const buttonClasses =
+  const generateButtonClasses =
     accent === "cyan"
-      ? "from-cyan to-sky-400 text-on-accent"
-      : "from-magenta to-fuchsia-400 text-on-accent";
+      ? "bg-gradient-to-r from-cyan to-cyan-light text-on-accent transition-transform hover:scale-[1.02] active:scale-[0.98]"
+      : "border border-magenta/35 bg-card text-magenta transition-colors hover:border-magenta/50 hover:bg-magenta/10 active:scale-[0.98]";
 
   const runGenerate = () => {
     const name = onGenerate();
     recordRoll(rollType, name);
     if (!nameRef.current || !cardRef.current) return;
 
-    setPendingName(null);
-    setLikedName(null);
+    setRolledName(null);
+    setLiked(false);
+    likedRef.current = false;
     nameRef.current.classList.remove("text-foreground");
     nameRef.current.classList.add("text-subtle");
 
@@ -112,7 +116,9 @@ function GeneratorCard({
       if (!nameRef.current) return;
 
       if (likable) {
-        setPendingName(name);
+        setRolledName(name);
+        setLiked(false);
+        likedRef.current = false;
       }
 
       if (reducedMotion) return;
@@ -133,15 +139,13 @@ function GeneratorCard({
   };
 
   const handleLike = () => {
-    if (!canLike || !pendingName) return;
-    recordLike(pendingName);
-    addSavedLike(pendingName);
-    setLikedName(pendingName);
-    setPendingName(null);
-  };
+    if (!canLike || !rolledName || liked || likedRef.current) return;
 
-  const showActions = likable && pendingName;
-  const showLiked = canLike && likedName && !pendingName;
+    likedRef.current = true;
+    setLiked(true);
+    recordLike(rolledName);
+    addSavedLike(rolledName);
+  };
 
   return (
     <div
@@ -172,71 +176,53 @@ function GeneratorCard({
             {placeholder}
           </p>
         </div>
-        {likable && (
+        {showInlineActions && (
           <div className="flex shrink-0 flex-row items-center justify-center gap-2 self-stretch">
-            {showActions && (
-              <>
-                <button
-                  type="button"
-                  onClick={runGenerate}
-                  aria-label="Re-roll"
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted transition-colors hover:border-cyan/40 hover:bg-hover hover:text-foreground"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <path d="M21 12a9 9 0 1 1-3-6.7" />
-                    <path d="M21 3v6h-6" />
-                  </svg>
-                </button>
-                {canLike ? (
-                  <button
-                    type="button"
-                    onClick={handleLike}
-                    aria-label="Like this borg"
-                    className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-cyan/30 bg-cyan/10 text-cyan transition-colors hover:bg-cyan/20"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      aria-hidden
-                    >
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                    </svg>
-                  </button>
-                ) : null}
-              </>
-            )}
-            {showLiked && (
-              <span
-                aria-label="Liked"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan/10 text-cyan"
+            <button
+              type="button"
+              onClick={runGenerate}
+              aria-label="Re-roll"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted transition-colors hover:border-cyan/40 hover:bg-hover hover:text-foreground"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M21 12a9 9 0 1 1-3-6.7" />
+                <path d="M21 3v6h-6" />
+              </svg>
+            </button>
+            {canLike ? (
+              <button
+                type="button"
+                onClick={handleLike}
+                disabled={likeDisabled}
+                aria-pressed={liked}
+                aria-label={liked ? "Liked" : "Like this borg"}
+                className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                  liked
+                    ? "cursor-default border-cyan/40 bg-cyan/20 text-cyan opacity-80"
+                    : "cursor-pointer border-cyan/30 bg-cyan/10 text-cyan hover:bg-cyan/20"
+                } disabled:pointer-events-none`}
               >
                 <svg
                   width="16"
                   height="16"
                   viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  fill="currentColor"
                   aria-hidden
                 >
-                  <path d="M20 6 9 17l-5-5" />
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                 </svg>
-              </span>
-            )}
+              </button>
+            ) : null}
           </div>
         )}
       </div>
@@ -244,11 +230,11 @@ function GeneratorCard({
       <button
         type="button"
         onClick={runGenerate}
-        className={`cursor-pointer rounded-full bg-gradient-to-r px-6 text-sm font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98] ${buttonClasses} ${
+        className={`cursor-pointer rounded-full px-6 text-sm font-semibold ${generateButtonClasses} ${
           compact ? "py-3" : "py-3.5"
         }`}
       >
-        {likedName
+        {liked
           ? "Generate another"
           : `Generate your ${label.toLowerCase()}!`}
       </button>
@@ -295,9 +281,6 @@ export default function Generator({
       <div className={embedded ? "" : "site-container"}>
         {!embedded && (
           <div className="gen-header mb-12 text-center">
-            <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-lime">
-              Name generator
-            </p>
             <h2 className="text-4xl font-bold text-foreground md:text-5xl">
               Let&apos;s borg.
             </h2>

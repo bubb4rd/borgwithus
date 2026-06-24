@@ -18,9 +18,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="dashboard-bg min-h-screen">
+    <div className="dashboard-bg min-h-screen overflow-x-hidden">
       <DashboardNavbar />
-      <main key={user.id} className="site-container px-4 py-8 md:px-8 md:py-10">
+      <main
+        key={user.id}
+        className="site-container min-w-0 px-4 py-8 md:px-8 md:py-10"
+      >
         {children}
       </main>
       <ScrollToTop />

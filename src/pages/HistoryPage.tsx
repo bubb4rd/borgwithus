@@ -14,7 +14,7 @@ export default function HistoryPage() {
         description="Full list of your saved likes and generator rolls."
       />
 
-      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-2 lg:items-start">
         <SavedLikes scrollable scrollHeight={HISTORY_SCROLL_HEIGHT} />
         <RecentRolls scrollable scrollHeight={HISTORY_SCROLL_HEIGHT} />
       </div>

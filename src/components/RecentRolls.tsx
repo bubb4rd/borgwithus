@@ -27,7 +27,7 @@ function RollItem({
 }) {
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl border bg-elevated ${
+      className={`flex min-w-0 items-center gap-3 rounded-xl border bg-elevated ${
         emphasized
           ? "highlight-entry px-3.5 py-3"
           : "border-border px-3 py-2.5"
@@ -94,7 +94,7 @@ export default function RecentRolls({
   return (
     <section
       id="recent-rolls"
-      className={`dashboard-panel flex flex-col p-5 ${
+      className={`dashboard-panel flex min-w-0 flex-col overflow-hidden p-5 ${
         scrollable && !scrollHeight ? "h-full min-h-0 overflow-hidden" : "h-full"
       }`}
     >
@@ -109,11 +109,11 @@ export default function RecentRolls({
         </p>
       ) : scrollable ? (
         <ScrollHintList height={scrollHeight} refreshDeps={[visible.length]}>
-          <ul className="space-y-2">
+          <ul className="min-w-0 space-y-2">
             {visible.map((roll) => (
               <li
                 key={roll.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-elevated px-3 py-2.5"
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-elevated px-3 py-2.5"
               >
                 <span
                   className={`shrink-0 rounded-md border px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider ${TYPE_STYLES[roll.type]}`}

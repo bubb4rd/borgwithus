@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useAuth } from "../context/AuthContext";
-import { scrollToSection } from "../lib/scrollToSection";
 
 const entrance = {
   autoAlpha: 0,
@@ -132,17 +131,16 @@ export default function Hero() {
           <div className="hero-cta-row mt-10 flex max-w-full flex-wrap items-center gap-3 sm:gap-4">
             <Link
               to={user ? "/dashboard" : "/signup"}
-              className="hero-btn hero-btn-text border-transparent bg-gradient-to-r from-cyan to-sky-400 font-semibold text-on-accent transition-opacity hover:opacity-90"
+              className="hero-btn hero-btn-text border-transparent bg-gradient-to-r from-cyan to-cyan-light font-semibold text-on-accent transition-opacity hover:opacity-90"
             >
               {user ? "Dashboard" : "Sign up"}
             </Link>
-            <button
-              type="button"
-              onClick={() => scrollToSection("#generator")}
+            <Link
+              to={user ? "/dashboard/generator" : "/signup"}
               className="hero-btn hero-btn-text glass font-semibold text-foreground transition-colors hover:border-cyan/40 hover:bg-hover"
             >
               Let&apos;s BORG
-            </button>
+            </Link>
             <a
               href="https://instagram.com/borgwithus"
               target="_blank"

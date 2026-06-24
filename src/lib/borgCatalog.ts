@@ -33,19 +33,19 @@ export const BORG_KIND_LABELS: Record<BorgKind, string> = {
 
 export const PRESET_TAGS = ["original", "ai"] as const;
 
-/** Tailwind cyan scale for admin catalog mix chart. */
+/** Gigas scale for admin catalog mix chart. */
 export const CATALOG_MIX_CYAN_PALETTE = {
-  50: "#ecfeff",
-  100: "#cffafe",
-  200: "#a5f3fc",
-  300: "#67e8f9",
-  400: "#22d3ee",
-  500: "#06b6d4",
-  600: "#0891b2",
-  700: "#0e7490",
-  800: "#155e75",
-  900: "#164e63",
-  950: "#083344",
+  50: "#f9f7fd",
+  100: "#f1ebfc",
+  200: "#e5dbf9",
+  300: "#d0bff3",
+  400: "#b396ea",
+  500: "#966ddf",
+  600: "#7e4ecf",
+  700: "#6a3cb4",
+  800: "#5a3593",
+  900: "#4a2c77",
+  950: "#2f1556",
 } as const;
 
 const CATALOG_MIX_CUSTOM_COLORS = [
@@ -327,6 +327,6 @@ export function tagBadgeClass(tag: string) {
     case "ai":
       return "bg-magenta/10 text-magenta border-magenta/20";
     default:
-      return "bg-sky-500/10 text-sky-700 border-sky-500/20 dark:text-sky-300";
+      return "bg-cyan/10 text-cyan border-cyan/20";
   }
 }

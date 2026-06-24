@@ -7,7 +7,6 @@ import HowTo from "../components/HowTo";
 import About from "../components/About";
 import Generator from "../components/Generator";
 import Leaderboard from "../components/Leaderboard";
-import Contact from "../components/Contact";
 import Footer from "../components/Footer";
 import HashScroll from "../components/HashScroll";
 import ScrollToTop from "../components/ScrollToTop";
@@ -52,7 +51,6 @@ export default function HomePage() {
         <About />
         <Generator />
         <Leaderboard />
-        <Contact />
       </main>
       <Footer />
       <ScrollToTop />

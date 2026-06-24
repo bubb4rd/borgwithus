@@ -111,14 +111,14 @@ export default function ScrollHintList({
 
   return (
     <div
-      className={`relative h-[-webkit-fill-available] overflow-hidden ${
-        height ? "" : "min-h-0 flex-1"
+      className={`relative min-w-0 overflow-hidden ${
+        height ? "" : "h-[-webkit-fill-available] min-h-0 flex-1"
       } ${className}`}
     >
       <div
         ref={scrollRef}
         onScroll={updateScrollHint}
-        className={`overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+        className={`min-w-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
           height ? "" : "h-full h-[-webkit-fill-available]"
         }`}
         style={height ? { height } : undefined}

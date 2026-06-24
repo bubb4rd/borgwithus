@@ -38,7 +38,7 @@ export default function GeneratorCTA() {
       <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[var(--dash-border)] bg-gradient-to-br from-cyan/10 to-magenta/10 px-5 py-3.5">
         <span className="text-sm font-semibold text-cyan">Roll now</span>
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-sky-400 text-sm text-on-accent transition group-hover:translate-x-0.5"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan to-cyan-light text-sm text-on-accent transition group-hover:translate-x-0.5"
           aria-hidden
         >
           →
