@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
+import { useDislikes } from "./DislikesContext";
 
 const LEADERBOARD_SIZE = 10;
 
@@ -8,6 +9,7 @@ const LikesContext = createContext(null);
 
 export function LikesProvider({ children }) {
   const { user } = useAuth();
+  const { clearDislike } = useDislikes();
   const userId = user?.id ?? null;
   const [liked, setLiked] = useState(() => new Set());
   const [leaderboard, setLeaderboard] = useState({
@@ -60,6 +62,8 @@ export function LikesProvider({ children }) {
         });
 
       flip(!wasLiked);
+      // A name is liked or disliked, not both.
+      if (!wasLiked) clearDislike(name);
       const { error } = wasLiked
         ? await supabase.from("borg_likes").delete().eq("user_id", userId).eq("name", name)
         : await supabase.from("borg_likes").insert({ user_id: userId, name });
@@ -68,7 +72,7 @@ export function LikesProvider({ children }) {
       if (error && error.code !== "23505") flip(wasLiked);
       loadLeaderboard();
     },
-    [liked, userId, loadLeaderboard]
+    [liked, userId, loadLeaderboard, clearDislike]
   );
 
   const value = useMemo(

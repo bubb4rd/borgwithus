@@ -4,6 +4,7 @@ import data from "../data.json";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import BetaTag from "./BetaTag";
+import DislikeButton from "./DislikeButton";
 import LikeButton from "./LikeButton";
 
 const MAX_THEME_LENGTH = 120;
@@ -112,7 +113,12 @@ function GeneratorPanel({ userId }) {
           <p key={loading ? "loading" : result ?? "empty"} className={`label-name ${nameState}`}>
             {loading ? "Cooking…" : result ?? "Hit generate"}
           </p>
-          {result && !loading && <LikeButton name={result} from="/#ai" />}
+          {result && !loading && (
+            <div className="label-feedback">
+              <LikeButton name={result} from="/#ai" />
+              <DislikeButton name={result} />
+            </div>
+          )}
         </div>
       </div>
       {error && (
