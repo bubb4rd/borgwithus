@@ -879,6 +879,24 @@
   fill: currentColor;
 }
 
+.like-btn.is-disliked {
+  background: var(--blue-deep);
+  border-color: var(--blue-deep);
+  color: var(--paper);
+}
+
+.like-btn.is-disliked .like-heart {
+  fill: currentColor;
+}
+
+/* BORG AI result: like and dislike side by side. */
+.label-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 /* Signed-out leaderboard: the total, read-only. */
 .like-count {
   display: inline-flex;

@@ -276,11 +276,9 @@ export default function SubmitBorg() {
       <div className="wrap">
         <div className="submit-card grain">
           <div className="submit-intro">
-            <span className="chip">The wall</span>
             <h2 className="display">Name one yourself.</h2>
             <p className="submit-copy">
-              Got a borg the generator missed? Send it in. An admin checks every name before it
-              hits the wall, and the best ones climb the leaderboard. Three a day per member.
+              You definitely have the taste for BORGs if you are here, show us what you got. The best ones climb the leaderboard.
             </p>
           </div>
           {panel}

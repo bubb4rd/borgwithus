@@ -21,3 +21,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# local screenshots
+/screenshots
+
+# local video projects
+/videos/

@@ -1,122 +1,22 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { askModel, buildMessages, type Draft, extractDrafts, pickPair } from "../_shared/borg-ai.ts";
+import { loadBatchSetup } from "../_shared/borg-setup.ts";
+import { corsHeaders, json } from "../_shared/http.ts";
 
-// Spends one daily BORG AI credit, asks the Ollama model for a name, and refunds the credit
-// when no usable name comes back. Credits live in public.ai_credit_usage and can only be spent
-// through this function (service role). Each name handed out is logged to public.borg_rolls for
-// the admin dashboard.
+// Spends one daily BORG AI credit, asks the Ollama model for a batch of "Original -> BORG name"
+// pairs with the live Studio prompt version (the built-in prompt when none is live), and hands out
+// a random name that doesn't repeat a name or original the site already knows. The model picks
+// the originals; for each one, its own name competes with a swap the code makes (borg-ai.ts
+// `codeSwap`), and real sound swaps win over tacked-on borgs. Refunds the credit when no fresh
+// name comes back. Credits live in public.ai_credit_usage and can only be spent through this
+// function (service role). Each name handed out is logged with its original and who made it to
+// public.borg_rolls for the admin dashboard, which also feeds later prompts through
+// get_borg_ai_context().
 
-const MODEL = Deno.env.get("BORG_AI_MODEL") ?? "llama3.2:3b";
+const MODEL = Deno.env.get("BORG_AI_MODEL") ?? "llama2-uncensored";
 const MAX_ATTEMPTS = 3;
 const MAX_PROMPT_LENGTH = 120;
 const MAX_AVOID_NAMES = 300;
-const MODEL_TIMEOUT_MS = 60_000;
-
-const STYLE_EXAMPLES = [
-  "Ron Borgundy",
-  "LeBorg James",
-  "Pablo Escoborg",
-  "Playborg Carti",
-  "SpongeBorg",
-  "Heisenborg",
-  "Borgan Freeman",
-  "Mark Zuckerborg",
-  "Pearl Harborg",
-  "Kareem Abdul-Jaborg",
-];
-
-const SYSTEM_PROMPT = `You invent BORG names. A BORG name is a famous person, place, brand, title or phrase where one syllable is swapped for "borg" so it still sounds right out loud.
-
-Rules:
-- Phonetic fit is everything: "borg" replaces a sound like bor, bur, bar, berg or burg.
-- The original reference must be instantly recognisable.
-- One substitution, short and punchy. Sports, rap, memes, movies, internet culture.
-- Crude and chaotic humour is fine.
-
-Reply with the name only: one line, at most 6 words, no quotes, no explanation, no emojis.`;
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-// Letters and digits only, padded so `includes` matches whole words:
-// " ron borgundy bears " contains the existing name " ron borgundy ".
-function wordKey(name: string) {
-  return ` ${name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
-}
-
-const CHATTER = /\b(here'?s|here is|sure|okay|i can|i'm|let me|how about|name:|borg name)\b/i;
-
-function cleanCandidate(text: string) {
-  return text
-    .replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, "")
-    .replace(/\s*\([^)]*\)/g, "")
-    .replace(/^[\s*\-•>#\d.)]+/, "")
-    .replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, "")
-    .replace(/[.!?,;:]+$/, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isUsableName(name: string) {
-  if (name.length < 3 || name.length > 60) return false;
-  if (name.split(" ").length > 6) return false;
-  if (CHATTER.test(name)) return false;
-  // "borg" has to be fused into a word (LeBorg, Heisenborg), not just mentioned.
-  return /\w+borg|borg\w+/i.test(name);
-}
-
-// Models pad answers with chatter, quotes, labels ("Name: …"), asides ("Theme - Name") and
-// several names at once ("A | B"); the shortest fragment that still reads as a borg name wins.
-function extractName(raw: string) {
-  const candidates = [...raw.matchAll(/["“]([^"”\n]{3,60})["”]/g)].map((match) => match[1]);
-  for (const line of raw.split(/\r?\n/)) {
-    candidates.push(line, ...line.split(/:\s+|[!?]\s+|\s+[-–—]\s+|\s*\|\s*/));
-  }
-
-  const names = candidates.map(cleanCandidate).filter(isUsableName);
-  return names.sort((a, b) => a.length - b.length)[0] ?? null;
-}
-
-async function askModel(host: string, prompt: string, attempt: number) {
-  const lines = [
-    `Examples of the style (do not repeat them): ${STYLE_EXAMPLES.join(" | ")}`,
-    prompt ? `Theme from the user: ${prompt}` : "Theme: anything goes.",
-  ];
-  if (attempt > 1) {
-    lines.push("Reply with ONLY the new name on one line. It must contain borg fused into a word.");
-  }
-
-  const response = await fetch(`${host}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    body: JSON.stringify({
-      model: MODEL,
-      stream: false,
-      options: { temperature: 1 },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: lines.join("\n") },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Model request failed (${response.status}): ${(await response.text()).slice(0, 200)}`);
-  }
-
-  const output: { message?: { content?: unknown } } = await response.json();
-  return typeof output.message?.content === "string" ? output.message.content : "";
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -148,9 +48,7 @@ Deno.serve(async (req) => {
   }
 
   // Names that already exist on the site; a new borg must not reuse one.
-  const avoid = [...STYLE_EXAMPLES, ...(Array.isArray(body.avoid) ? body.avoid.slice(0, MAX_AVOID_NAMES) : [])]
-    .filter((name): name is string => typeof name === "string" && /[a-z0-9]/i.test(name))
-    .map(wordKey);
+  const siteNames = Array.isArray(body.avoid) ? body.avoid.slice(0, MAX_AVOID_NAMES) : [];
 
   if (!modelHost) {
     console.error("AI_INFERENCE_API_HOST is not set");
@@ -169,18 +67,31 @@ Deno.serve(async (req) => {
     return json({ error: "You're out of BORG AI credits for today.", remaining: 0 }, 429);
   }
 
+  const setup = await loadBatchSetup(admin, siteNames);
+  const repeats: Draft[] = [];
+
   try {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const name = extractName(await askModel(modelHost, prompt, attempt));
-      const key = name && wordKey(name);
-      if (key && !avoid.some((existing) => key.includes(existing))) {
+      const { messages } = buildMessages({
+        config: setup.config,
+        prompt,
+        examples: setup.examplePool,
+        usedNames: [...repeats.flatMap(({ name }) => (name ? [name] : [])), ...setup.recent],
+        usedOriginals: [...repeats.map(({ original }) => original), ...setup.originals],
+        attempt,
+      });
+      const raw = await askModel(modelHost, MODEL, messages, setup.config.temperature);
+      const batch = pickPair(extractDrafts(raw), setup.avoid);
+      if (batch.pair) {
+        const { name, original, source } = batch.pair;
         // Stats only: a failed log never costs the member their name.
         const { error: logError } = await admin
           .from("borg_rolls")
-          .insert({ user_id: user.id, kind: "ai", name });
+          .insert({ user_id: user.id, kind: "ai", name, original, source });
         if (logError) console.error("borg_rolls insert failed:", logError.message);
         return json({ name, remaining: credits });
       }
+      repeats.push(...batch.repeats);
     }
   } catch (error) {
     console.error("generate-borg-name model error:", error);
