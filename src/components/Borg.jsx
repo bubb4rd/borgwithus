@@ -1,55 +1,78 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import data from "../data.json";
+import { supabase } from "../lib/supabase";
+import LikeButton from "./LikeButton";
+
+// Never hand back the value already on screen, so every click visibly changes.
+function pickDifferent(list, current) {
+  if (list.length < 2) return list[0];
+  let next = current;
+  while (next === current) next = list[Math.floor(Math.random() * list.length)];
+  return next;
+}
+
+// Counts the roll for the admin dashboard. Fire and forget: stats never block the generator.
+function logRoll(kind, name) {
+  supabase?.rpc("log_borg_roll", { p_kind: kind, p_name: name }).then(() => {});
+}
 
 export default function Borg() {
-  const [currBorg, setCurrBorg] = useState("Click the button!");
-  const [mio, setMio] = useState("Click the button!");
-  useEffect(() => {}, []);
-  function borg() {
-    let array = data.borgs;
-    var copy = array.slice(0);
-    if (copy.length < 1) copy = array.slice(0);
-    var index = Math.floor(Math.random() * copy.length);
-    var item = copy[index];
-    copy.splice(index, 1);
-    setCurrBorg(item);
-  }
-  function m() {
-    let array = data.mio;
-    var copy = array.slice(0);
-    if (copy.length < 1) copy = array.slice(0);
-    var index = Math.floor(Math.random() * copy.length);
-    var item = copy[index];
-    copy.splice(index, 1);
-    setMio(item);
-  }
+  const [name, setName] = useState(null);
+  const [flavour, setFlavour] = useState(null);
+
+  const rollName = () => {
+    const next = pickDifferent(data.borgs, name);
+    setName(next);
+    logRoll("borg", next);
+  };
+  const rollFlavour = () => {
+    const next = pickDifferent(data.mio, flavour);
+    setFlavour(next);
+    logRoll("mio", next.name);
+  };
+  const rollBoth = () => {
+    rollName();
+    rollFlavour();
+  };
+
   return (
-    <div id="borg">
-      <div className="b-container">
-        <h1>Let's borg.</h1>
-        <p>Please drink responsibly.</p>
-        <div className="c-container">
-          <button className="borg-button" id="borg-button" onClick={borg}>
-            BORG!
-          </button>
-          <div className="borg-box">
-            <p className="borg-name" id="borg-name">
-              {currBorg}
+    <section id="borg" className="gen-card grain">
+      <div className="gen-intro">
+        <h2 className="display">Let's borg.</h2>
+        <p className="gen-copy">
+          Every borg needs a name and a flavour. Roll until it feels right, then Sharpie it on the
+          jug.
+        </p>
+        <p className="gen-disclaimer">Please drink responsibly.</p>
+      </div>
+
+      <div className="label">
+        <div className="label-tape" aria-hidden="true" />
+        <div className="label-row" aria-live="polite">
+          <span className="label-key">This borg is called</span>
+          <div className="label-result">
+            <p key={name ?? "empty"} className={`label-name ${name ? "is-set" : "is-empty"}`}>
+              {name ?? "Hit BORG!"}
             </p>
+            {name && <LikeButton name={name} from="/#borg" />}
           </div>
         </div>
-        <div className="c-container">
-          <button className="mio-button" id="mio-button" onClick={m}>
-            MIO
-          </button>
-          <div className="borg-box">
-            <p className="mio-name" id="mio-name">
-              {mio}
-            </p>
-          </div>
+        <div className="label-row" aria-live="polite">
+          <span className="label-key">Flavoured with</span>
+          <p
+            key={flavour?.name ?? "empty"}
+            className={`label-flavour ${flavour ? "is-set" : "is-empty"}`}
+            style={flavour ? { "--flavour": flavour.color } : undefined}
+          >
+            {flavour ? `Mio ${flavour.name}` : "Hit MIO"}
+          </p>
+        </div>
+        <div className="label-actions">
+          <button type="button" className="btn btn-ink" onClick={rollName}>BORG!</button>
+          <button type="button" className="btn btn-ink-ghost" onClick={rollFlavour}>MIO</button>
+          <button type="button" className="btn btn-blue" onClick={rollBoth}>Both</button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

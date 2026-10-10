@@ -70,12 +70,29 @@
             "Borganic Chemistry"
         ],
         "mio": [
-        "Lemonade",
-        "Fruit Punch",
-        "Strawberry Watermelon",
-        "Berry Grape",
-        "Black Cherry",
-        "Green Thunder",
-        "Lemon Lime"
+            { "name": "Lemonade", "color": "#ffd60a" },
+            { "name": "Fruit Punch", "color": "#e8202a" },
+            { "name": "Strawberry Watermelon", "color": "#ff3d68" },
+            { "name": "Berry Grape", "color": "#7a2fbf" },
+            { "name": "Black Cherry", "color": "#7a0b2e" },
+            { "name": "Green Thunder", "color": "#2fbf3a" },
+            { "name": "Lemon Lime", "color": "#a8e01b" }
+        ],
+        "featured": [
+            "Ron Borgundy",
+            "Pablo Escoborg",
+            "Playborg Carti",
+            "Borger King",
+            "Smorgasborg",
+            "Ruth Bader-Ginsborg",
+            "Borgan Freeman",
+            "SpongeBorg",
+            "LeBorg James",
+            "Heisenborg",
+            "Rick and Borgy",
+            "Borga the Explorer",
+            "Mark Zuckerborg",
+            "Kareem Abdul-Jaborg",
+            "Holy shit its Jason Borg"
         ]
     }

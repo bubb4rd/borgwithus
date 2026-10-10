@@ -2,6 +2,28 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Accounts, BORG AI and the leaderboard (Supabase)
+
+Signed-in members can like names, send in three of their own names a day for the wall, and spend five BORG AI credits a day (all daily limits reset at midnight UTC); an admin approves each sent-in name before it appears. The leaderboard ranks names by likes. Without the env vars below the site still runs, with those features shown as offline.
+
+1. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Supabase → Project Settings → API).
+2. Link the project and apply the schema: `npx supabase link --project-ref gfmxznmnclbsdenozrxd`, then `npm run db:push`.
+   The migration copies likes from the old `user_saved_likes` table if it exists. The old tables are left alone.
+3. Set the AI secrets and deploy the function:
+   `npx supabase secrets set AI_INFERENCE_API_HOST=https://ai.borgwithus.xyz BORG_AI_MODEL=llama3.2:3b`, then `npm run ai:deploy`.
+4. In Supabase → Authentication → URL Configuration, set the site URL to the production domain and allow `<domain>/login` as a redirect (used by confirmation emails).
+5. Make yourself an admin in Supabase → SQL Editor:
+   `insert into public.borg_admins (user_id) select id from auth.users where email = 'you@example.com';`
+   Admins get "Dashboard" (`/admin`: 7/14/30/90-day ranges compared with the previous period — rolls by kind, signups and member growth, today's pace, roll mix, weekday pattern, member/engagement/review ratios, recent rolls and signups, most-liked names, and a daily numbers table) and "Review queue" (`/review`: approve or reject pending names) in the account menu.
+
+Where things live:
+
+- `supabase/migrations/` — `borg_likes` (one row per member and name), `borg_like_counts` (kept in sync by trigger, read by the leaderboard), `ai_credit_usage` plus the credit functions. Only the edge function can spend or refund credits.
+- `supabase/migrations/…_borg_submissions.sql` — `borg_submissions` (member-sent names, `pending` until an admin approves or rejects them, unique by letters and digits across every status) and `borg_admins`. Neither table has grants; the site goes through `get_borg_wall()` (newest 12 approved, plus the caller's own pending and rejected), `get_borg_submission_quota()`, `submit_borg_name()`, `remove_borg_submission()` (frees that day's slot), and the admin-only `get_borg_review_queue()` and `review_borg_submission()`. Members without a name show as the first 8 characters of their account id.
+- `supabase/migrations/…_borg_admin_dashboard.sql` — `borg_rolls` (every classic BORG/MIO roll, guests included, plus each BORG AI name; history copied from the old `user_rolls` table), `log_borg_roll()` (called by the generator for classic rolls) and the admin-only `get_admin_dashboard()`.
+- `supabase/functions/generate-borg-name/` — checks the session, spends a credit, asks the Ollama model, refunds the credit if no usable name comes back, and logs each name it hands out to `borg_rolls`.
+- `public/_redirects` — Netlify SPA fallback so `/login`, `/register`, `/review` and `/admin` load on refresh.
+
 ## Available Scripts
 
 In the project directory, you can run:
