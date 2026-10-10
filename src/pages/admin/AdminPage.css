@@ -137,6 +137,10 @@
   min-width: 7.5rem;
 }
 
+.dash-tabs {
+  margin-bottom: 1.25rem;
+}
+
 /* ---------- banners & states ---------- */
 
 .dash-banner {
@@ -495,6 +499,7 @@ button.dash-legend-item:hover {
 .dash-span-side { grid-column: span 4; }
 .dash-span-wide { grid-column: span 6; }
 .dash-span-narrow { grid-column: span 3; }
+.dash-span-full { grid-column: 1 / -1; }
 
 .dash-health {
   display: grid;

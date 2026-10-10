@@ -5,6 +5,8 @@ import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { timeAgo } from "../../lib/timeAgo";
 import { DailyChart, MixBar, Sparkline } from "./charts";
+import { Empty, Panel } from "./Panel";
+import Studio from "./Studio";
 import {
   KINDS,
   RANGES,
@@ -28,6 +30,10 @@ import "./AdminPage.css";
 const ROUTE = "/admin";
 const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const KIND_LABEL = { borg: "Borg", mio: "Mio", ai: "AI" };
+const TABS = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "studio", label: "AI Borg Studio" },
+];
 
 /* ---------- small pieces ---------- */
 
@@ -62,21 +68,6 @@ function Pairs({ rows }) {
   );
 }
 
-function Panel({ title, sub, aside, className = "", children }) {
-  return (
-    <section className={`dash-panel ${className}`}>
-      <header className="dash-panel-head">
-        <div>
-          <h2 className="dash-panel-title">{title}</h2>
-          {sub && <p className="dash-panel-sub">{sub}</p>}
-        </div>
-        {aside}
-      </header>
-      {children}
-    </section>
-  );
-}
-
 function TipRows({ rows }) {
   return (
     <dl className="dash-tip-rows">
@@ -91,10 +82,6 @@ function TipRows({ rows }) {
       ))}
     </dl>
   );
-}
-
-function Empty({ children }) {
-  return <p className="dash-empty">{children}</p>;
 }
 
 /* ---------- KPI tiles ---------- */
@@ -839,6 +826,7 @@ export default function AdminPage() {
   const { user, ready, online, isAdmin } = useAuth();
   const [params, setParams] = useSearchParams();
   const range = parseRange(params.get("days"));
+  const tab = params.get("tab") === "studio" ? "studio" : "dashboard";
   const [state, setState] = useState({ status: "loading", data: null, range: null, loadedAt: null, error: null });
   const latest = useRef(0);
 
@@ -861,8 +849,8 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (isAdmin) load(range);
-  }, [isAdmin, range, load]);
+    if (isAdmin && tab === "dashboard") load(range);
+  }, [isAdmin, tab, range, load]);
 
   useEffect(
     () => () => {
@@ -887,6 +875,13 @@ export default function AdminPage() {
     setParams(nextParams, { replace: true });
   };
 
+  const setTab = (next) => {
+    const nextParams = new URLSearchParams(params);
+    if (next === "dashboard") nextParams.delete("tab");
+    else nextParams.set("tab", next);
+    setParams(nextParams);
+  };
+
   return (
     <div className="dash-page">
       <SubpageHeader>
@@ -896,78 +891,98 @@ export default function AdminPage() {
       </SubpageHeader>
       <main className="dash-main">
         <div className="wrap">
-          <div className="dash-head">
-            <div>
-              <h1 className="dash-title">Dashboard.</h1>
-              <p className="dash-meta">
-                {shown && shown.n > 0 && (
-                  <span>
-                    {fmtDay(shown.current[0].day)} – {fmtDay(shown.current[shown.n - 1].day)}
-                  </span>
-                )}
-                <span>
-                  Times in {data?.timezone ?? TIME_ZONE}
-                  {data && data.timezone !== TIME_ZONE ? ` (your zone ${TIME_ZONE} unknown to the DB)` : ""}
-                </span>
-                {loadedAt && (
-                  <span title={loadedAt.toLocaleString()}>
-                    Updated {loadedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                  </span>
-                )}
-              </p>
-            </div>
-            <div className="dash-controls">
-              <div className="dash-seg" role="group" aria-label="Date range">
-                {RANGES.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={option === range ? "is-active" : ""}
-                    aria-pressed={option === range}
-                    onClick={() => setRange(option)}
-                  >
-                    {option}d
-                  </button>
-                ))}
-              </div>
+          <nav className="dash-seg dash-tabs" aria-label="Admin sections">
+            {TABS.map((option) => (
               <button
+                key={option.key}
                 type="button"
-                className="btn btn-acid btn-sm dash-refresh"
-                onClick={() => load(range)}
-                disabled={loading}
+                className={option.key === tab ? "is-active" : ""}
+                aria-current={option.key === tab ? "page" : undefined}
+                onClick={() => setTab(option.key)}
               >
-                {loading ? "Loading…" : "Refresh"}
+                {option.label}
               </button>
-            </div>
-          </div>
+            ))}
+          </nav>
 
-          {status === "error" && data && (
-            <div className="dash-banner is-error" role="alert">
-              <span>
-                Couldn't refresh ({error}). Showing data from{" "}
-                {loadedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                {state.range !== range ? ` for the last ${state.range} days` : ""}.
-              </span>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => load(range)}>
-                Retry
-              </button>
-            </div>
-          )}
-
-          {data ? (
-            <div className={`dash-body${loading ? " is-loading" : ""}`} aria-busy={loading}>
-              <Dashboard data={data} range={shownRange} loadedAt={loadedAt} />
-            </div>
-          ) : status === "error" ? (
-            <div className="dash-failed" role="alert">
-              <p className="dash-panel-title">Couldn't load the dashboard.</p>
-              <p className="dash-note">{error}</p>
-              <button type="button" className="btn btn-acid btn-sm" onClick={() => load(range)}>
-                Try again
-              </button>
-            </div>
+          {tab === "studio" ? (
+            <Studio />
           ) : (
-            <Skeleton />
+            <>
+              <div className="dash-head">
+                <div>
+                  <h1 className="dash-title">Dashboard.</h1>
+                  <p className="dash-meta">
+                    {shown && shown.n > 0 && (
+                      <span>
+                        {fmtDay(shown.current[0].day)} – {fmtDay(shown.current[shown.n - 1].day)}
+                      </span>
+                    )}
+                    <span>
+                      Times in {data?.timezone ?? TIME_ZONE}
+                      {data && data.timezone !== TIME_ZONE ? ` (your zone ${TIME_ZONE} unknown to the DB)` : ""}
+                    </span>
+                    {loadedAt && (
+                      <span title={loadedAt.toLocaleString()}>
+                        Updated {loadedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="dash-controls">
+                  <div className="dash-seg" role="group" aria-label="Date range">
+                    {RANGES.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        className={option === range ? "is-active" : ""}
+                        aria-pressed={option === range}
+                        onClick={() => setRange(option)}
+                      >
+                        {option}d
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-acid btn-sm dash-refresh"
+                    onClick={() => load(range)}
+                    disabled={loading}
+                  >
+                    {loading ? "Loading…" : "Refresh"}
+                  </button>
+                </div>
+              </div>
+
+              {status === "error" && data && (
+                <div className="dash-banner is-error" role="alert">
+                  <span>
+                    Couldn't refresh ({error}). Showing data from{" "}
+                    {loadedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                    {state.range !== range ? ` for the last ${state.range} days` : ""}.
+                  </span>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => load(range)}>
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {data ? (
+                <div className={`dash-body${loading ? " is-loading" : ""}`} aria-busy={loading}>
+                  <Dashboard data={data} range={shownRange} loadedAt={loadedAt} />
+                </div>
+              ) : status === "error" ? (
+                <div className="dash-failed" role="alert">
+                  <p className="dash-panel-title">Couldn't load the dashboard.</p>
+                  <p className="dash-note">{error}</p>
+                  <button type="button" className="btn btn-acid btn-sm" onClick={() => load(range)}>
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                <Skeleton />
+              )}
+            </>
           )}
         </div>
       </main>
