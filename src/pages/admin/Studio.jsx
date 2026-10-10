@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { timeAgo } from "../../lib/timeAgo";
 import { fmt, fmtDateTime, fmtDec, fmtPct, ratio } from "./metrics";
 import { Empty, Panel } from "./Panel";
@@ -114,15 +114,29 @@ function Tally({ counts, unrated }) {
 
 /* ---------- playground ---------- */
 
-function ResultRow({ pair, rating, starred, onRate, onStar }) {
+/**
+ * One name on offer. The ref exposes what the Playground's keyboard shortcuts need: rate good,
+ * open the 👎 or ✏️ form, star, submit or close an open form, and focus the row. Each does what
+ * the matching button would, and nothing while that button is disabled.
+ */
+const ResultRow = forwardRef(function ResultRow({ pair, rating, starred, current, onRate, onStar, onSelect }, ref) {
   const [open, setOpen] = useState(null);
   const [reason, setReason] = useState("");
   const [fixedName, setFixedName] = useState("");
   const [saving, setSaving] = useState(false);
   const [starring, setStarring] = useState(false);
   const [error, setError] = useState(null);
+  // Bumped to focus the open form's field again when its shortcut is pressed while it is open.
+  const [focusRequest, setFocusRequest] = useState(0);
+  const rowRef = useRef(null);
+  const reasonRef = useRef(null);
+  const fixedRef = useRef(null);
   const verdict = rating?.verdict ?? null;
   const shownName = verdict === "fixed" ? rating.fixed_name : pair.name;
+
+  useEffect(() => {
+    if (open) (open === "fixed" ? fixedRef : reasonRef).current?.focus();
+  }, [open, focusRequest]);
 
   const save = async (next) => {
     setSaving(true);
@@ -133,6 +147,8 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
         reason: next === "good" ? "" : reason.trim(),
         fixedName: next === "fixed" ? fixedName.trim() : "",
       });
+      // The form's fields are about to go: keep focus on the row so the shortcuts carry on.
+      if (open && rowRef.current?.contains(document.activeElement)) rowRef.current.focus();
       setOpen(null);
     } catch (failure) {
       setError(failure.message);
@@ -151,6 +167,11 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
     setFixedName(rating?.fixed_name ?? pair.name);
   };
 
+  const close = () => {
+    setOpen(null);
+    rowRef.current?.focus();
+  };
+
   const star = async () => {
     setStarring(true);
     setError(null);
@@ -164,9 +185,43 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
 
   const fixedTrimmed = fixedName.trim();
   const canSaveFix = fixedTrimmed && api.nameKey(fixedTrimmed) !== api.nameKey(pair.name);
+  const canSubmit = !saving && (open === "bad" ? Boolean(reason.trim()) : open === "fixed" && Boolean(canSaveFix));
+
+  const rateGood = () => {
+    setOpen(null);
+    save("good");
+  };
+
+  useImperativeHandle(ref, () => ({
+    focus: () => rowRef.current?.focus(),
+    isOpen: () => open !== null,
+    good: () => {
+      if (!saving && verdict !== "good") rateGood();
+    },
+    openForm: (kind) => {
+      if (saving) return;
+      if (open === kind) setFocusRequest((n) => n + 1);
+      else toggle(kind);
+    },
+    star: () => {
+      if (!starred && !starring && !saving) star();
+    },
+    submit: () => {
+      if (canSubmit) save(open);
+    },
+    close,
+  }));
 
   return (
-    <li className={`studio-result${verdict ? ` is-${verdict}` : ""}${pair.swap === false ? " is-tacked" : ""}`}>
+    <li
+      ref={rowRef}
+      tabIndex={-1}
+      aria-current={current || undefined}
+      onFocus={onSelect}
+      className={`studio-result${verdict ? ` is-${verdict}` : ""}${pair.swap === false ? " is-tacked" : ""}${
+        current ? " is-current" : ""
+      }`}
+    >
       <div className="studio-result-main">
         <p className="studio-original">
           {pair.original} <SourceChip source={pair.source} swap={pair.swap !== false} />
@@ -180,12 +235,10 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
           type="button"
           className="studio-verdict is-good"
           aria-pressed={verdict === "good"}
+          aria-keyshortcuts="1"
           title="Good"
           disabled={saving || verdict === "good"}
-          onClick={() => {
-            setOpen(null);
-            save("good");
-          }}
+          onClick={rateGood}
         >
           👍
         </button>
@@ -194,6 +247,7 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
           className="studio-verdict is-bad"
           aria-pressed={verdict === "bad"}
           aria-expanded={open === "bad"}
+          aria-keyshortcuts="2"
           title="Bad: say why"
           disabled={saving}
           onClick={() => toggle("bad")}
@@ -205,6 +259,7 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
           className="studio-verdict is-fixed"
           aria-pressed={verdict === "fixed"}
           aria-expanded={open === "fixed"}
+          aria-keyshortcuts="3"
           title="Fix it: type the right name"
           disabled={saving}
           onClick={() => toggle("fixed")}
@@ -215,6 +270,7 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
           type="button"
           className="studio-verdict is-star"
           aria-pressed={starred}
+          aria-keyshortcuts="S"
           title={starred ? "In the example pool" : `Add ${shownName} to the examples`}
           disabled={starred || starring || saving}
           onClick={star}
@@ -229,15 +285,20 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
             event.preventDefault();
             save(open);
           }}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            close();
+          }}
         >
           {open === "fixed" && (
             <label className="studio-field">
               <span>Fixed name</span>
               <input
+                ref={fixedRef}
                 className="studio-input"
                 type="text"
                 value={fixedName}
-                autoFocus
                 onChange={(event) => setFixedName(event.target.value)}
               />
             </label>
@@ -245,23 +306,19 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
           <label className="studio-field">
             <span>{open === "bad" ? "Why is it bad?" : "What was wrong (optional)"}</span>
             <input
+              ref={reasonRef}
               className="studio-input"
               type="text"
               value={reason}
-              autoFocus={open === "bad"}
               placeholder={open === "bad" ? "Tacked on, not a sound swap…" : ""}
               onChange={(event) => setReason(event.target.value)}
             />
           </label>
           <div className="studio-draft-actions">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(null)}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={close}>
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn btn-acid btn-sm"
-              disabled={saving || (open === "bad" ? !reason.trim() : !canSaveFix)}
-            >
+            <button type="submit" className="btn btn-acid btn-sm" disabled={!canSubmit}>
               {saving ? "Saving…" : open === "bad" ? "Save 👎" : "Save fix"}
             </button>
           </div>
@@ -274,7 +331,7 @@ function ResultRow({ pair, rating, starred, onRate, onStar }) {
       )}
     </li>
   );
-}
+});
 
 /** Seconds since `since`, ticking, so a 30-50 s batch doesn't look stuck. */
 function Elapsed({ since }) {
@@ -340,15 +397,32 @@ function UnderTheHood({ prompt, raw, dropped = [] }) {
   );
 }
 
-function BatchColumn({ tag, run, prompts, promptId, onPick, exampleKeys, onRate, onStar, onMakeLive, livePending }) {
+function BatchColumn({
+  tag,
+  run,
+  prompts,
+  promptId,
+  onPick,
+  exampleKeys,
+  onRate,
+  onStar,
+  onMakeLive,
+  livePending,
+  active,
+  cursor,
+  onActivate,
+  onSelectRow,
+  registerRow,
+}) {
   const prompt = prompts.find((p) => p.id === promptId) ?? null;
   const runPrompt = run && prompts.find((p) => p.id === run.promptId);
   const counts = { ...NO_RATINGS };
   if (run) Object.values(run.ratings).forEach((r) => (counts[r.verdict] += 1));
   const rated = counts.good + counts.bad + counts.fixed;
 
+  // Clicking or tabbing into a column points the keyboard shortcuts at it.
   return (
-    <div className="studio-col">
+    <div className={`studio-col${active ? " is-active" : ""}`} onPointerDown={onActivate} onFocus={onActivate}>
       <div className="studio-col-head">
         <VersionSelect label={tag} prompts={prompts} value={promptId} onChange={onPick} />
         {prompt &&
@@ -377,7 +451,7 @@ function BatchColumn({ tag, run, prompts, promptId, onPick, exampleKeys, onRate,
       {!run ? (
         <Empty>Pick a theme and generate.</Empty>
       ) : run.status === "queued" ? (
-        <Empty>Waiting for A: the model server answers one batch at a time.</Empty>
+        <Empty>Waiting for {run.queuedBehind}: the model server answers one batch at a time.</Empty>
       ) : run.status === "loading" ? (
         <>
           <p className="dash-note studio-cooking" role="status">
@@ -410,17 +484,20 @@ function BatchColumn({ tag, run, prompts, promptId, onPick, exampleKeys, onRate,
             <Empty>The model came back with nothing usable. Check the raw reply below.</Empty>
           ) : (
             <ol className="studio-results">
-              {run.pairs.map((pair) => {
+              {run.pairs.map((pair, n) => {
                 const rating = run.ratings[pair.key];
                 const shown = rating?.verdict === "fixed" ? rating.fixed_name : pair.name;
                 return (
                   <ResultRow
                     key={pair.key}
+                    ref={registerRow(pair.key)}
                     pair={pair}
                     rating={rating}
                     starred={exampleKeys.has(api.nameKey(shown))}
+                    current={n === cursor}
                     onRate={(input) => onRate(run, pair, input)}
                     onStar={onStar}
+                    onSelect={() => onSelectRow(n)}
                   />
                 );
               })}
@@ -433,12 +510,57 @@ function BatchColumn({ tag, run, prompts, promptId, onPick, exampleKeys, onRate,
   );
 }
 
+/** The Playground's keyboard shortcuts, always on show so they don't need a help screen. */
+function KeyLegend({ target }) {
+  return (
+    <div className="studio-keys">
+      <span className="studio-keys-title">Keys</span>
+      <span>
+        <kbd>J</kbd> <kbd>K</kbd> next / previous
+      </span>
+      <span>
+        <kbd>1</kbd> 👍
+      </span>
+      <span>
+        <kbd>2</kbd> 👎
+      </span>
+      <span>
+        <kbd>3</kbd> ✏️
+      </span>
+      <span>
+        <kbd>S</kbd> ⭐
+      </span>
+      <span>
+        <kbd>Enter</kbd> save
+      </span>
+      <span>
+        <kbd>Esc</kbd> close / leave the theme
+      </span>
+      <span>
+        <kbd>G</kbd> generate
+      </span>
+      {target && <span className="studio-keys-target">Acting on {target}: click a column to switch</span>}
+    </div>
+  );
+}
+
 function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePending }) {
   const [mode, setMode] = useState("single");
   const [theme, setTheme] = useState("");
   const [picks, setPicks] = useState([null, null]);
   const [runs, setRuns] = useState([null, null]);
+  // Keyboard target: the highlighted result in each column, and the column the keys act on.
+  const [cursors, setCursors] = useState([0, 0]);
+  const [activeCol, setActiveCol] = useState(0);
+  const [cookNext, setCookNext] = useState(false);
+  // The one background batch, if any: { id, promptId, theme, startedAt, promise, status, result,
+  // error, dropped }. A dropped batch still cooking keeps the slot until it lands, so a second
+  // background request never runs beside it.
+  const [next, setNext] = useState(null);
   const seq = useRef(0);
+  const rows = useRef(new Map());
+  const latest = useRef(null);
+  latest.current = { runs, cursors };
 
   const live = prompts.find((p) => p.is_live) ?? prompts[prompts.length - 1] ?? null;
   const challenger = [...prompts].reverse().find((p) => p.id !== live?.id) ?? live;
@@ -446,16 +568,38 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
   const pickFor = (i) => (prompts.some((p) => p.id === picks[i]) ? picks[i] : defaults[i]);
   const columns = mode === "compare" ? [0, 1] : [0];
   const busy = columns.some((i) => runs[i]?.status === "loading" || runs[i]?.status === "queued");
+  const target = mode === "compare" ? activeCol : 0;
+  const nextMatches = next && !next.dropped && next.promptId === pickFor(0) && next.theme === theme.trim();
 
-  const setRun = (i, id, next) =>
-    setRuns((current) => current.map((run, k) => (k === i && run?.seq === id ? { ...run, ...next } : run)));
+  const setRun = (i, id, update) =>
+    setRuns((current) => current.map((run, k) => (k === i && run?.seq === id ? { ...run, ...update } : run)));
+
+  const dropNext = () => setNext((job) => (job?.status === "loading" ? { ...job, dropped: true } : null));
+
+  // With "Keep the next batch cooking" on, a batch that lands starts the next one with the same
+  // version and theme in the background (one version only: compare already runs two in a row).
+  const shown = runs[0];
+  useEffect(() => {
+    if (!cookNext || mode !== "single" || next || shown?.status !== "ready") return;
+    const id = ++seq.current;
+    const settle = (update) => setNext((job) => (job?.id !== id ? job : job.dropped ? null : { ...job, ...update }));
+    const promise = api.generateBatch({ promptId: shown.promptId, theme: shown.theme, topic: null });
+    promise.then(
+      (result) => settle({ status: "ready", result }),
+      (failure) => settle({ status: "error", error: failure.message })
+    );
+    setNext({ id, promptId: shown.promptId, theme: shown.theme, startedAt: Date.now(), promise, status: "loading" });
+  }, [cookNext, mode, next, shown]);
 
   // One batch at a time: the model server is slow and serial, so two at once would only make both
   // time out. With a blank theme, B reuses A's random topic so the two versions face the same task.
-  const generate = async (event) => {
-    event.preventDefault();
+  // A background batch for the same version and theme is shown as soon as it is ready (or picked up
+  // while it cooks); one for another version or theme is waited out, then thrown away.
+  const generate = async () => {
     if (busy || !prompts.length) return;
     const used = theme.trim();
+    const job = next;
+    const reuse = mode === "single" && Boolean(nextMatches) && job.status !== "error";
     const ids = columns.map(() => ++seq.current);
     setRuns((current) =>
       current.map((run, k) => {
@@ -463,7 +607,8 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
         if (c === -1) return run;
         return {
           seq: ids[c],
-          status: c === 0 ? "loading" : "queued",
+          status: "queued",
+          queuedBehind: c === 0 ? "the background batch" : "A",
           startedAt: Date.now(),
           theme: used,
           topic: null,
@@ -475,12 +620,19 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
         };
       })
     );
+    setCursors((current) => current.map((n, k) => (columns.includes(k) ? 0 : n)));
+    if (reuse) setNext(null);
+    else dropNext();
+    if (!reuse && job?.status === "loading") await job.promise.catch(() => {});
     let topic = null;
     for (const [c, i] of columns.entries()) {
       const id = ids[c];
-      if (c > 0) setRun(i, id, { status: "loading", startedAt: Date.now() });
+      const adopted = reuse && c === 0 ? job : null;
+      if (!adopted?.result) setRun(i, id, { status: "loading", startedAt: adopted?.startedAt ?? Date.now() });
       try {
-        const result = await api.generateBatch({ promptId: pickFor(i), theme: used, topic });
+        const result = adopted
+          ? adopted.result ?? (await adopted.promise)
+          : await api.generateBatch({ promptId: pickFor(i), theme: used, topic });
         topic = topic ?? result.topic;
         setRun(i, id, {
           status: "ready",
@@ -490,6 +642,34 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
       } catch (failure) {
         setRun(i, id, { status: "error", error: failure.message, prompt: failure.prompt, topic: failure.topic });
       }
+    }
+  };
+
+  const selectRow = (i, n) => {
+    setActiveCol(i);
+    setCursors((current) => (current[i] === n ? current : current.map((m, k) => (k === i ? n : m))));
+  };
+
+  const focusRow = (i, n) => {
+    selectRow(i, n);
+    rows.current.get(latest.current.runs[i].pairs[n].key)?.focus();
+  };
+
+  // After a 👍 the highlight moves on to the next unrated name, wrapping round, unless it was moved
+  // meanwhile. Focus follows it unless it went somewhere else (say, the theme field).
+  const advancePast = (i, runSeq, key) => {
+    const { runs: now, cursors: at } = latest.current;
+    const run = now[i];
+    if (run?.seq !== runSeq) return;
+    const from = run.pairs.findIndex((p) => p.key === key);
+    if (at[i] !== from) return;
+    const upcoming = [...run.pairs.slice(from + 1), ...run.pairs.slice(0, from)].find((p) => !run.ratings[p.key]);
+    if (!upcoming) return;
+    const focused = document.activeElement;
+    if (!focused || focused === document.body || focused.closest(".studio-results")) {
+      focusRow(i, run.pairs.indexOf(upcoming));
+    } else {
+      selectRow(i, run.pairs.indexOf(upcoming));
     }
   };
 
@@ -510,7 +690,92 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
     setRuns((current) =>
       current.map((r, k) => (k === i && r?.seq === run.seq ? { ...r, ratings: { ...r.ratings, [pair.key]: rating } } : r))
     );
+    if (input.verdict === "good") advancePast(i, run.seq, pair.key);
   };
+
+  // Shortcuts work anywhere on the page except while typing, and never with a modifier held.
+  const onKey = useRef(null);
+  onKey.current = (event) => {
+    const el = event.target;
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) return;
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    if (key === "g") {
+      event.preventDefault();
+      generate();
+      return;
+    }
+    const run = runs[target];
+    const pairs = run?.status === "ready" ? run.pairs : [];
+    if (!pairs.length) return;
+    const at = Math.min(cursors[target], pairs.length - 1);
+    const row = rows.current.get(pairs[at].key);
+    switch (key) {
+      case "j":
+      case "ArrowDown":
+        focusRow(target, Math.min(at + 1, pairs.length - 1));
+        break;
+      case "k":
+      case "ArrowUp":
+        focusRow(target, Math.max(at - 1, 0));
+        break;
+      case "1":
+        row?.good();
+        break;
+      case "2":
+        row?.openForm("bad");
+        break;
+      case "3":
+        row?.openForm("fixed");
+        break;
+      case "s":
+        row?.star();
+        break;
+      case "Enter":
+        // Buttons, links and summaries keep their own Enter.
+        if (!row?.isOpen() || el.closest("button, a, summary")) return;
+        row.submit();
+        break;
+      case "Escape":
+        if (!row?.isOpen()) return;
+        row.close();
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+  };
+
+  useEffect(() => {
+    const listener = (event) => onKey.current(event);
+    document.addEventListener("keydown", listener);
+    return () => document.removeEventListener("keydown", listener);
+  }, []);
+
+  const registerRow = (key) => (handle) => {
+    if (handle) rows.current.set(key, handle);
+    else rows.current.delete(key);
+  };
+
+  let cookNote = null;
+  if (cookNext) {
+    if (mode !== "single") cookNote = "Paused while comparing two versions.";
+    else if (!next) cookNote = "Starts cooking as soon as a batch lands.";
+    else if (next.dropped) cookNote = "Finishing a background batch nobody wants any more; it gets thrown away.";
+    else if (next.status === "loading")
+      cookNote = nextMatches ? (
+        <>
+          Next batch cooking… <Elapsed since={next.startedAt} />. Generate picks it up.
+        </>
+      ) : (
+        "The next batch is cooking for another version or theme: Generate waits for it, then makes a fresh one."
+      );
+    else if (next.status === "error") cookNote = `The next batch failed (${next.error}). Generate makes a fresh one.`;
+    else
+      cookNote = nextMatches
+        ? "Next batch ready: Generate shows it instantly."
+        : "The next batch is for another version or theme: Generate makes a fresh one.";
+  }
 
   return (
     <Panel
@@ -521,7 +786,10 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
         <Seg
           label="Playground mode"
           value={mode}
-          onChange={setMode}
+          onChange={(key) => {
+            setMode(key);
+            if (key !== "single") dropNext();
+          }}
           options={[
             { key: "single", label: "One version" },
             { key: "compare", label: "Compare two", disabled: prompts.length < 2 },
@@ -529,7 +797,13 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
         />
       }
     >
-      <form className="studio-generate" onSubmit={generate}>
+      <form
+        className="studio-generate"
+        onSubmit={(event) => {
+          event.preventDefault();
+          generate();
+        }}
+      >
         <label className="studio-field">
           <span>Theme (blank = random topic, like a real roll)</span>
           <input
@@ -539,12 +813,53 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
             maxLength={api.MAX_THEME_LENGTH}
             placeholder="NBA, 2000s rap, horror movies…"
             onChange={(event) => setTheme(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") event.currentTarget.blur();
+            }}
           />
         </label>
-        <button type="submit" className="btn btn-acid btn-sm studio-generate-btn" disabled={busy || !prompts.length}>
+        <button
+          type="submit"
+          className="btn btn-acid btn-sm studio-generate-btn"
+          aria-keyshortcuts="G"
+          disabled={busy || !prompts.length}
+        >
           {busy ? "Generating…" : mode === "compare" ? "Generate A, then B" : `Generate ${api.BATCH_SIZE}`}
         </button>
       </form>
+
+      <div className="studio-cook">
+        <button
+          id="studio-cook"
+          type="button"
+          role="switch"
+          className="studio-switch"
+          aria-checked={cookNext}
+          aria-describedby="studio-cook-hint"
+          onClick={() => {
+            setCookNext(!cookNext);
+            if (cookNext) dropNext();
+          }}
+        />
+        <div className="studio-cook-text">
+          <label htmlFor="studio-cook" className="studio-cook-label">
+            Keep the next batch cooking
+          </label>
+          <p id="studio-cook-hint" className="dash-note">
+            One version only. As soon as a batch lands, the next one with the same version and theme starts in the
+            background, so Generate shows it instantly; unrated names of the batch it replaces are dropped. The model
+            server is shared with members' live rolls and answers one request at a time, so while it cooks, members
+            wait.
+          </p>
+          {cookNote && (
+            <p className="dash-note studio-cook-status" role="status">
+              {cookNote}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <KeyLegend target={mode === "compare" ? (target === 0 ? "A" : "B") : null} />
 
       {prompts.length === 0 ? (
         <Empty>No prompt versions yet. Save the first one below.</Empty>
@@ -563,6 +878,11 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
               onStar={onStar}
               onMakeLive={onMakeLive}
               livePending={livePending}
+              active={mode === "compare" && target === i}
+              cursor={target === i ? cursors[i] : null}
+              onActivate={() => setActiveCol(i)}
+              onSelectRow={(n) => selectRow(i, n)}
+              registerRow={registerRow}
             />
           ))}
         </div>
