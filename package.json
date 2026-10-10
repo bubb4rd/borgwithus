@@ -19,7 +19,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "db:push": "supabase db push",
-    "ai:deploy": "supabase functions deploy generate-borg-name borg-ai-studio --use-api"
+    "ai:deploy": "supabase functions deploy generate-borg-name borg-ai-studio --use-api",
+    "test:ai": "npx -y deno@2 test --no-lock supabase/functions/_shared"
   },
   "eslintConfig": {
     "extends": [

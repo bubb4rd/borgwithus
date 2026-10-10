@@ -107,6 +107,67 @@ select.studio-input {
   min-width: 10rem;
 }
 
+.studio-cook {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.studio-cook .studio-switch {
+  margin-top: 0.1rem;
+}
+
+.studio-cook-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.studio-cook-label {
+  font-family: var(--font-mono);
+  font-size: var(--dash-mono-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--paper);
+  cursor: pointer;
+}
+
+.studio-cook-status {
+  color: var(--paper);
+}
+
+.studio-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  font-family: var(--font-mono);
+  font-size: var(--dash-mono-xs);
+  color: var(--paper-dim);
+}
+
+.studio-keys-title {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.studio-keys kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 0.3rem;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  color: var(--paper);
+  font-family: inherit;
+  text-align: center;
+}
+
+.studio-keys-target {
+  color: var(--paper);
+}
+
 .studio-cols {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -125,6 +186,12 @@ select.studio-input {
   padding: 1rem;
   border: 1px dashed var(--rule);
   border-radius: 14px;
+}
+
+/* The column the keyboard shortcuts act on. */
+.studio-cols.is-compare .studio-col.is-active {
+  border-style: solid;
+  border-color: var(--paper-dim);
 }
 
 .studio-col-head {
@@ -176,13 +243,28 @@ select.studio-input {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.4rem 0.75rem;
-  padding: 0.65rem 0 0.65rem 0.75rem;
+  padding: 0.65rem 0.5rem 0.65rem 0.75rem;
   border-top: 1px dashed var(--rule);
   border-left: 3px solid transparent;
 }
 
 .studio-result:first-child {
   border-top: 0;
+}
+
+.studio-result:focus {
+  outline: none;
+}
+
+/* The result the keyboard shortcuts act on. */
+.studio-result.is-current {
+  background: rgba(243, 238, 226, 0.05);
+  box-shadow: inset 0 0 0 1.5px rgba(243, 238, 226, 0.22);
+  border-radius: 0 10px 10px 0;
+}
+
+.studio-result.is-current:focus-visible {
+  box-shadow: inset 0 0 0 1.5px var(--acid);
 }
 
 .studio-result.is-good { border-left-color: var(--studio-good); }
@@ -647,6 +729,13 @@ select.studio-input {
 
   .studio-range {
     width: 100%;
+  }
+}
+
+@media (hover: none) {
+  /* Touch screens: no keyboard to use the shortcuts with. */
+  .studio-keys {
+    display: none;
   }
 }
 
