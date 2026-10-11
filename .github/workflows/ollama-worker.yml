@@ -31,11 +31,16 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:latest
             ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }}
-      # The pushed image must list the model without downloading anything (no GPU needed).
-      - name: Check the model is baked in
+      # Runs the pushed image like a Runpod worker, on CPU: /ping must go 204 -> 200 once the model
+      # is loaded, then a short /api/chat must answer through port 80. Nothing is downloaded.
+      - name: Smoke-test the worker
         run: |
-          docker run --rm --entrypoint /bin/sh ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }} -c '
-            echo "OLLAMA_MODELS=$OLLAMA_MODELS"; du -sh "$OLLAMA_MODELS" 2>&1; find "$OLLAMA_MODELS" -maxdepth 3 | head -20
-            ollama serve > /tmp/serve.log 2>&1 & sleep 5
-            grep "total blobs" /tmp/serve.log; ollama list
-            ollama list | grep -q "$MODEL"'
+          docker run -d --name worker -p 8080:80 ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }}
+          for i in $(seq 1 120); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/ping || true)
+            echo "ping $i: $code"; [ "$code" = 200 ] && break; sleep 5
+          done
+          chat=$(curl -sf --max-time 300 localhost:8080/api/chat -d '{"model":"llama2-uncensored","stream":false,"options":{"num_predict":8},"messages":[{"role":"user","content":"Say hi"}]}') || chat=FAILED
+          echo "chat: $chat"
+          docker logs worker 2>&1 | grep -E "worker.py|inference compute|error" || true
+          [ "$code" = 200 ] && [ "$chat" != FAILED ]
