@@ -35,7 +35,7 @@ jobs:
       # is loaded, then a short /api/chat must answer through port 80. Nothing is downloaded.
       - name: Smoke-test the worker
         run: |
-          docker run -d --name worker -p 8080:80 ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }}
+          docker run -d --name worker -p 8080:8000 ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }}
           for i in $(seq 1 120); do
             code=$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/ping || true)
             echo "ping $i: $code"; [ "$code" = 200 ] && break; sleep 5
