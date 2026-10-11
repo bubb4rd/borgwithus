@@ -268,6 +268,66 @@
   background: var(--ink-soft);
 }
 
+/* A paper sticker like the jug's label, slapped above the lede. */
+.hero-sticker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.9rem 0.45rem 0.8rem;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 4px 4px 0 var(--blue);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transform: rotate(-2deg);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hero-sticker:hover {
+  transform: rotate(0deg) translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--blue);
+}
+
+.hero-sticker-tape {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 46px;
+  height: 16px;
+  transform: translateX(-50%) rotate(-4deg);
+  background: color-mix(in srgb, var(--acid) 85%, transparent);
+  border: 1px solid rgba(15, 14, 18, 0.2);
+}
+
+.hero-sticker-count {
+  padding-right: 0.75rem;
+  border-right: 2px dashed rgba(15, 14, 18, 0.25);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.hero-sticker-label {
+  color: var(--blue-deep);
+}
+
+.hero-sticker-arrow {
+  transition: transform 0.2s ease;
+}
+
+.hero-sticker:hover .hero-sticker-arrow {
+  transform: translateX(3px);
+}
+
 .hero-stage {
   --type: clamp(5.25rem, min(17vw, 26svh), 15rem);
   position: relative;
@@ -346,6 +406,13 @@
   width: 100%;
   max-width: 1200px;
   margin-inline: auto;
+}
+
+.hero-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .hero-lede {
@@ -576,7 +643,7 @@
   border-radius: var(--radius);
   color: var(--ink);
   background:
-    radial-gradient(circle at 85% 15%, rgba(214, 255, 61, 0.55), transparent 35%),
+    radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--acid) 55%, transparent), transparent 35%),
     var(--blue);
   overflow: hidden;
 }
@@ -621,7 +688,7 @@
   width: 120px;
   height: 28px;
   transform: translateX(-50%) rotate(2deg);
-  background: rgba(214, 255, 61, 0.85);
+  background: color-mix(in srgb, var(--acid) 85%, transparent);
   border: 1px solid rgba(15, 14, 18, 0.2);
 }
 

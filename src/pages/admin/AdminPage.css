@@ -8,7 +8,7 @@
   --dash-rolls: var(--paper-dim);
   --dash-line: var(--blue);
   --dash-guest: #6d6a75;
-  --dash-up: var(--acid);
+  --dash-up: #3ddc84;
   --dash-down: #ff6b5e;
   --dash-panel: var(--ink-soft);
   --dash-mono-xs: 0.6875rem;
@@ -987,7 +987,7 @@ button.dash-legend-item:hover {
 }
 
 .dash-row-meta .is-ok {
-  color: var(--acid);
+  color: var(--dash-up);
 }
 
 .dash-row-meta .is-warn {
