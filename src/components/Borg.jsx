@@ -41,7 +41,7 @@ export default function Borg() {
   return (
     <section id="borg" className="gen-card grain">
       <div className="gen-intro">
-        <h2 className="display">Let's borg.</h2>
+        <h2 className="display">Let's borg</h2>
         <p className="gen-copy">
           Every borg needs a name and a flavour. Roll until it feels right, then Sharpie it on the
           jug.

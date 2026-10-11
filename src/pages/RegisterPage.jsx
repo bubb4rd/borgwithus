@@ -41,7 +41,7 @@ export default function RegisterPage() {
 
   if (confirmEmail) {
     return (
-      <AuthShell title="Check your inbox." lede="One more step before you can borg with us.">
+      <AuthShell title="Check your inbox" lede="One more step before you can borg with us.">
         <div className="label-row">
           <span className="label-key">Confirmation sent to</span>
           <p className="auth-sent">{confirmEmail}</p>
@@ -58,7 +58,7 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Join the borg."
+      title="Join the borg"
       lede="A free account unlocks BORG AI with five credits a day, three names a day on the wall, and a vote on the leaderboard."
     >
       <form className="auth-form" onSubmit={submit}>

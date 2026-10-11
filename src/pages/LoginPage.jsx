@@ -29,7 +29,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Welcome back."
+      title="Welcome back"
       lede="Log in to like names, post your own and spend your daily BORG AI credits."
     >
       <form className="auth-form" onSubmit={submit}>

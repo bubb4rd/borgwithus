@@ -1050,26 +1050,47 @@
   gap: 1.25rem;
 }
 
-.ai-chip {
-  color: var(--acid);
+/* "Borg AI" in the heading is a button that opens the beta modal; it reads as heading text.
+   The orange is a wide gradient clipped to the glyphs with a soft light band parked off the
+   left edge; hover slides it across once. Both ends are solid orange, so leaving snaps back
+   without a visible reverse sweep. */
+.ai-brand {
+  margin: 0 0.08em;
+  padding: 0 0.08em;
+  border: 0;
+  border-radius: 0.06em;
+  background: linear-gradient(
+      110deg,
+      var(--acid) 40%,
+      color-mix(in oklab, var(--acid), var(--paper) 45%) 50%,
+      var(--acid) 60%
+    )
+    no-repeat 100% 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: transparent;
+  cursor: pointer;
 }
 
-.ai-tags {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.ai-brand:hover,
+.ai-brand:focus-visible {
+  background-position: 0 0;
+  transition: background-position 0.9s cubic-bezier(0.25, 0.6, 0.3, 1);
 }
 
-.beta-chip {
-  background: var(--acid);
-  border-color: var(--acid);
-  color: var(--ink);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+.ai-brand:focus-visible {
+  outline: 0.03em solid var(--acid);
+  outline-offset: 0.06em;
 }
 
-.beta-chip:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 3px 3px 0 var(--blue);
+@media (prefers-reduced-motion: reduce) {
+  .ai-brand:hover,
+  .ai-brand:focus-visible {
+    transition: none;
+  }
 }
 
 /* Native <dialog>: strip the UA box so only the paper label shows. The global reset zeroes
