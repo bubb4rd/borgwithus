@@ -12,7 +12,8 @@ import { corsHeaders, json } from "../_shared/http.ts";
 //   lost     the model's originals that offer no name at all, and why: { original, name, reason }
 //            (see LostReason); originals the model never wrote a usable line for aren't in it
 //   topic    the random topic picked for a blank theme (null with a theme)
-//   prompt   { system, user }, exactly what the model was sent
+//   prompt   { system, demo, user }, exactly what the model was sent: the system prompt, the format
+//            demo exchange ({ user, assistant }, null without examples) and the request
 //   raw      the model's reply as is
 //   ms       how long the model took
 // Request: { promptId, theme, topic?, avoid }: avoid is the site's own names, like a member roll;
@@ -60,16 +61,12 @@ Deno.serve(async (req) => {
   const setup = await loadBatchSetup(createClient(supabaseUrl, serviceKey), siteNames, body.promptId as number);
   if (!setup.version) return json({ error: "That prompt version doesn't exist." }, 404);
 
-  const { messages, topic } = buildMessages({
-    config: setup.config,
-    prompt: theme,
-    topic: forcedTopic,
-    examples: setup.examplePool,
-    usedNames: setup.recent,
-    usedOriginals: setup.originals,
-    attempt: 1,
-  });
-  const sent = { system: messages[0].content, user: messages[1].content };
+  const { messages, topic } = buildMessages({ config: setup.config, prompt: theme, topic: forcedTopic, repeats: [], attempt: 1 });
+  const sent = {
+    system: messages[0].content,
+    demo: messages.length > 2 ? { user: messages[1].content, assistant: messages[2].content } : null,
+    user: messages[messages.length - 1].content,
+  };
 
   const started = Date.now();
   let raw: string;
