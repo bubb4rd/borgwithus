@@ -1,13 +1,14 @@
 // Prompt building, the model call and name filtering for BORG AI, shared by generate-borg-name
 // (member rolls) and borg-ai-studio (admin test batches). Uses no Deno or Supabase APIs.
 
-// The model server reads ~20 prompt tokens and writes ~4 tokens a second, so every line of the
-// prompt and reply counts against MODEL_TIMEOUT_MS.
+// Every line of the prompt costs model read time and is one more thing for a 7B model to echo
+// back, so a request carries only the system prompt, a short format demo and the theme.
 export const BATCH_SIZE = 5;
 const FORMAT_EXAMPLES = 3;
-const EXAMPLES_PER_PROMPT = 4;
 const MAX_USED_IN_PROMPT = 8;
 const MODEL_TIMEOUT_MS = 60_000;
+/** The user turn of the format demo; its examples come from every topic. */
+export const DEMO_THEME = "Theme: anything goes";
 
 /** A BORG name and the real name or phrase it riffs on. */
 export type Pair = { original: string; name: string };
@@ -76,7 +77,7 @@ Nothing else: no numbering, no quotes, no explanation.`;
 
 /**
  * What a prompt version controls. `{count}` in the system prompt stands for BATCH_SIZE;
- * `formatCount` "Original -> name" pairs are sampled from `formatExamples` into every request.
+ * `formatCount` pairs from `formatExamples` (at most BATCH_SIZE) make up the format demo.
  */
 export type PromptConfig = {
   systemPrompt: string;
@@ -186,17 +187,6 @@ export function extractDrafts(raw: string) {
     drafts.set(compactKey(original), { original, name: name ?? null });
   }
   return [...drafts.values()];
-}
-
-/** Distinct usable names, first spelling kept. */
-export function usableNames(names: unknown[]) {
-  const seen = new Map<string, string>();
-  for (const name of names) {
-    if (typeof name !== "string") continue;
-    const clean = name.trim();
-    if (isUsableName(clean) && !seen.has(compactKey(clean))) seen.set(compactKey(clean), clean);
-  }
-  return [...seen.values()];
 }
 
 export type AvoidEntry = { words: string; compact: string };
@@ -388,46 +378,70 @@ export type PromptInput = {
   prompt: string;
   /** The topic to use when the theme is empty, instead of a random one (Studio comparisons). */
   topic?: string | null;
-  /** Pool to sample style examples from. */
-  examples: string[];
-  /** Names the model must not repeat or respell, most important first. */
-  usedNames: string[];
-  /** Originals the model must not riff on again, most important first. */
-  usedOriginals: string[];
+  /** Drafts this request already threw out as repeats; listed to the model on retries only. */
+  repeats: Draft[];
   attempt: number;
 };
 
-/** The chat messages for one batch, and the random topic picked when the theme is blank. */
-export function buildMessages(
-  { config, prompt, topic: forcedTopic, examples, usedNames, usedOriginals, attempt }: PromptInput,
-  random = Math.random,
-) {
+/** Where the swap sits in a BORG name: at its start (Borgan Freeman), its end (Heisenborg) or between. */
+export function swapPosition(name: string): "start" | "middle" | "end" {
+  const key = compactKey(name);
+  if (key.startsWith("borg")) return "start";
+  return /borgs?$/.test(key) ? "end" : "middle";
+}
+
+/**
+ * Up to `count` pairs for the format demo: real sound swaps only (`swapsSound`), taken in turn
+ * from start, middle and end swaps so the model sees borg land in different places. The built-in
+ * pairs stand in when no pair in `pairs` is a real swap.
+ */
+export function formatDemo(pairs: Pair[], count: number, random = Math.random) {
+  const swaps = pairs.filter(swapsSound);
+  const groups = new Map<string, Pair[]>();
+  for (const pair of sample(swaps.length ? swaps : STYLE_PAIRS, Infinity, random)) {
+    const position = swapPosition(pair.name);
+    groups.set(position, [...(groups.get(position) ?? []), pair]);
+  }
+  const turns = sample([...groups.values()], groups.size, random);
+  const picked: Pair[] = [];
+  while (picked.length < count && turns.some((group) => group.length)) {
+    for (const group of turns) {
+      if (picked.length < count && group.length) picked.push(group.shift()!);
+    }
+  }
+  return picked;
+}
+
+/**
+ * The chat messages for one batch, and the random topic picked when the theme is blank. The
+ * format examples go in as an earlier exchange (a "Theme: anything goes" turn answered with
+ * example lines), which Llama 2 chat models copy more reliably than a list in the request. The
+ * names a retry must not repeat are only listed from attempt 2, from this request's repeats:
+ * `pickPair` already checks every batch against the site's names in code.
+ */
+export function buildMessages({ config, prompt, topic: forcedTopic, repeats, attempt }: PromptInput, random = Math.random) {
   const topic = prompt ? null : forcedTopic || sample(TOPICS, 1, random)[0];
-  const lines: string[] = [];
-  if (config.formatCount > 0 && config.formatExamples.length) {
-    lines.push(
-      "Format examples:",
-      ...sample(config.formatExamples, config.formatCount, random).map(({ original, name }) => `${original} -> ${name}`),
+  const messages = [{ role: "system", content: config.systemPrompt.replaceAll("{count}", String(BATCH_SIZE)) }];
+  const demo = formatDemo(config.formatExamples, Math.min(config.formatCount, BATCH_SIZE), random);
+  if (demo.length) {
+    messages.push(
+      { role: "user", content: DEMO_THEME },
+      { role: "assistant", content: demo.map(({ original, name }) => `${original} -> ${name}`).join("\n") },
     );
   }
-  lines.push(`More BORG names (do not repeat them): ${sample(examples, EXAMPLES_PER_PROMPT, random).join(" | ")}`);
-  if (usedOriginals.length) {
-    lines.push(`Used originals: ${usedOriginals.slice(0, MAX_USED_IN_PROMPT).join(" | ")}`);
-  }
-  if (usedNames.length) {
-    lines.push(`Used names: ${usedNames.slice(0, MAX_USED_IN_PROMPT).join(" | ")}`);
+  const lines: string[] = [];
+  if (attempt > 1) {
+    const originals = repeats.map(({ original }) => original);
+    const names = repeats.flatMap(({ name }) => (name ? [name] : []));
+    if (originals.length) lines.push(`Used originals: ${originals.slice(0, MAX_USED_IN_PROMPT).join(" | ")}`);
+    if (names.length) lines.push(`Used names: ${names.slice(0, MAX_USED_IN_PROMPT).join(" | ")}`);
   }
   lines.push(prompt ? `Theme from the user: ${prompt}` : `Theme: ${topic}`);
   if (attempt > 1) {
     lines.push("Reply with ONLY the new lines, each in the form: Original -> BORG name");
   }
-  return {
-    topic,
-    messages: [
-      { role: "system", content: config.systemPrompt.replaceAll("{count}", String(BATCH_SIZE)) },
-      { role: "user", content: lines.join("\n") },
-    ],
-  };
+  messages.push({ role: "user", content: lines.join("\n") });
+  return { topic, messages };
 }
 
 /** Where the Ollama model runs. `apiKey` is sent as a Bearer token (Runpod requires one). */

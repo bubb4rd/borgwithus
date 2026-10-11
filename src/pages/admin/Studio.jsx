@@ -948,6 +948,37 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
         </button>
       </form>
 
+      <div className="studio-cook">
+        <button
+          id="studio-cook"
+          type="button"
+          role="switch"
+          className="studio-switch"
+          aria-checked={cookNext}
+          aria-describedby="studio-cook-hint"
+          onClick={() => {
+            setCookNext(!cookNext);
+            if (cookNext) dropNext();
+          }}
+        />
+        <div className="studio-cook-text">
+          <label htmlFor="studio-cook" className="studio-cook-label">
+            Keep the next batch cooking
+          </label>
+          <p id="studio-cook-hint" className="dash-note">
+            One version only. As soon as a batch lands, the next one with the same version and theme starts in the
+            background, so Generate shows it instantly; unrated names of the batch it replaces are dropped. The model
+            server is shared with members' live rolls and answers one request at a time, so while it cooks, members
+            wait.
+          </p>
+          {cookNote && (
+            <p className="dash-note studio-cook-status" role="status">
+              {cookNote}
+            </p>
+          )}
+        </div>
+      </div>
+
       <KeyLegend target={mode === "compare" ? (target === 0 ? "A" : "B") : null} />
 
       {prompts.length === 0 ? (
