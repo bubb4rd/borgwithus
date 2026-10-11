@@ -673,7 +673,7 @@ export default function Borgs() {
     <>
       <div className="dash-head">
         <div>
-          <h1 className="dash-title">Borgs.</h1>
+          <h1 className="dash-title">Borgs</h1>
           {rows && (
             <p className="dash-meta">
               <span>{plural(all.length, "borg")} on the board</span>

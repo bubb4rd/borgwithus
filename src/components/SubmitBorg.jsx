@@ -52,7 +52,7 @@ function LockedPanel() {
       <div className="label-tape" aria-hidden="true" />
       <div className="label-row">
         <span className="label-key">Members only</span>
-        <p className="label-name is-locked">Three borgs a day.</p>
+        <p className="label-name is-locked">Three borgs a day</p>
       </div>
       <p className="ai-note">Make a free account to send in your own names for the wall.</p>
       <div className="label-actions">
@@ -73,7 +73,7 @@ function OfflinePanel() {
       <div className="label-tape" aria-hidden="true" />
       <div className="label-row">
         <span className="label-key">Status</span>
-        <p className="label-name is-locked">The wall is offline.</p>
+        <p className="label-name is-locked">The wall is offline</p>
       </div>
       <p className="ai-note">Roll a classic while we patch it up.</p>
     </div>
@@ -277,7 +277,7 @@ export default function SubmitBorg() {
       <div className="wrap">
         <div className="submit-card grain">
           <div className="submit-intro">
-            <h2 className="display">Name one yourself.</h2>
+            <h2 className="display">Name one yourself</h2>
             <p className="submit-copy">
               You definitely have the taste for BORGs if you are here, show us what you got. The best ones climb the leaderboard.
             </p>

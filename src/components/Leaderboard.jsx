@@ -18,7 +18,7 @@ export default function Leaderboard() {
     <section id="leaderboard" className="leaderboard">
       <div className="wrap">
         <div className="section-head board-head">
-          <h2 className="display">Top borgs.</h2>
+          <h2 className="display">Top borgs</h2>
           <p className="board-sub">Likes</p>
         </div>
 

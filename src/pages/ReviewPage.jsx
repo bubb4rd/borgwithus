@@ -53,7 +53,7 @@ export default function ReviewPage() {
 
   return (
     <AuthShell
-      title="Review queue."
+      title="Review queue"
       lede="Member names wait here until an admin approves them. Approved names go straight to the wall."
     >
       {error && (

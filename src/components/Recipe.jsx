@@ -23,7 +23,7 @@ export default function Recipe() {
     <section id="recipe" className="recipe">
       <div className="wrap">
         <div className="section-head">
-          <h2 className="display">How to borg.</h2>
+          <h2 className="display">How to borg?</h2>
         </div>
         <ol className="steps">
           {STEPS.map((step, i) => (

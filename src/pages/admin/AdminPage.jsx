@@ -916,7 +916,7 @@ export default function AdminPage() {
             <>
               <div className="dash-head">
                 <div>
-                  <h1 className="dash-title">Dashboard.</h1>
+                  <h1 className="dash-title">Dashboard</h1>
                   <p className="dash-meta">
                     {shown && shown.n > 0 && (
                       <span>

@@ -2144,7 +2144,7 @@ export default function Studio() {
     <>
       <div className="dash-head">
         <div>
-          <h1 className="dash-title">Studio.</h1>
+          <h1 className="dash-title">Studio</h1>
         </div>
         <div className="dash-controls">
           <button

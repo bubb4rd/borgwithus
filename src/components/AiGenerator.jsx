@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useBorgs } from "../context/BorgsContext";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import BetaTag from "./BetaTag";
+import BorgAiLabel from "./BorgAiLabel";
 import DislikeButton from "./DislikeButton";
 import LikeButton from "./LikeButton";
 
@@ -32,7 +32,7 @@ function LockedPanel() {
       <div className="label-tape" aria-hidden="true" />
       <div className="label-row">
         <span className="label-key">Members only</span>
-        <p className="label-name is-locked">Five AI borgs a day.</p>
+        <p className="label-name is-locked">Five AI borgs a day</p>
       </div>
       <p className="ai-note">Make a free account to unlock BORG AI. Credits refill every day.</p>
       <div className="label-actions">
@@ -143,7 +143,7 @@ function OfflinePanel() {
       <div className="label-tape" aria-hidden="true" />
       <div className="label-row">
         <span className="label-key">Status</span>
-        <p className="label-name is-locked">BORG AI is offline.</p>
+        <p className="label-name is-locked">BORG AI is offline</p>
       </div>
       <p className="ai-note">Roll a classic while we sober it up.</p>
     </div>
@@ -160,11 +160,9 @@ export default function AiGenerator() {
   return (
     <section id="ai" className="ai-card grain">
       <div className="ai-intro">
-        <div className="ai-tags">
-          <span className="chip ai-chip">BORG AI</span>
-          <BetaTag />
-        </div>
-        <h2 className="display">Ask the AI.</h2>
+        <h2 className="display">
+          Ask <BorgAiLabel />
+        </h2>
         <p className="ai-copy">
           Give it a theme, like your city, your team or the friend who always shows up late, and it
           cooks up a borg name nobody has heard yet.
