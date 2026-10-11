@@ -7,9 +7,10 @@
 FROM ollama/ollama:0.40.2
 
 ARG MODEL=llama2-uncensored
-# Models live outside /root: on Runpod workers /root/.ollama/models came up empty ("total
-# blobs: 0") although the pull is in the image. 2048 is llama2-uncensored's own context; left
-# unset, Ollama sizes it from VRAM (32768 on a 24 GB card) and loads far more than a roll needs.
+# The model is pulled into /models at build time. Ollama 0.40.2 logs "total blobs: 0" at startup
+# even with it there; `ollama list` and the CI smoke test are the real check. 2048 is
+# llama2-uncensored's own context; left unset, Ollama sizes it from VRAM (32768 on a 24 GB card)
+# and loads far more than a roll needs.
 ENV MODEL=$MODEL \
     OLLAMA_HOST=127.0.0.1:11434 \
     OLLAMA_MODELS=/models \
