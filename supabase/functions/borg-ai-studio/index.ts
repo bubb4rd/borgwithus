@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { askModel, buildMessages, extractDrafts, pickPair } from "../_shared/borg-ai.ts";
+import { askModel, buildMessages, extractDrafts, modelServer, pickPair } from "../_shared/borg-ai.ts";
 import { loadBatchSetup } from "../_shared/borg-setup.ts";
 import { corsHeaders, json } from "../_shared/http.ts";
 
@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const modelHost = Deno.env.get("AI_INFERENCE_API_HOST")?.replace(/\/$/, "");
+  const server = modelServer();
 
   const authorization = req.headers.get("Authorization");
   if (!authorization) return json({ error: "Admins only." }, 403);
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
   }
   const siteNames = Array.isArray(body.avoid) ? body.avoid.slice(0, MAX_AVOID_NAMES) : [];
 
-  if (!modelHost) {
+  if (!server) {
     console.error("AI_INFERENCE_API_HOST is not set");
     return json({ error: "BORG AI is offline right now." }, 503);
   }
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   const started = Date.now();
   let raw: string;
   try {
-    raw = await askModel(modelHost, MODEL, messages, setup.config.temperature);
+    raw = await askModel(server, MODEL, messages, setup.config.temperature);
   } catch (error) {
     console.error("borg-ai-studio model error:", error);
     const timedOut = error instanceof DOMException && error.name === "TimeoutError";

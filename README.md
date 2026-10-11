@@ -10,7 +10,7 @@ Signed-in members can like names, send in three of their own names a day for the
 2. Link the project and apply the schema: `npx supabase link --project-ref gfmxznmnclbsdenozrxd`, then `npm run db:push`.
    The migration copies likes from the old `user_saved_likes` table if it exists. The old tables are left alone.
 3. Set the AI secrets and deploy the functions:
-   `npx supabase secrets set AI_INFERENCE_API_HOST=https://ai.borgwithus.xyz BORG_AI_MODEL=llama2-uncensored`, then `npm run ai:deploy` (deploys `generate-borg-name` and `borg-ai-studio`; bundled on Supabase's side, so Docker isn't needed). The uncensored model is what gets the cruder names; the Ollama server must have it pulled (`ollama pull llama2-uncensored`).
+   `npx supabase secrets set AI_INFERENCE_API_HOST=https://ai.borgwithus.xyz BORG_AI_MODEL=llama2-uncensored`, then `npm run ai:deploy` (deploys `generate-borg-name` and `borg-ai-studio`; bundled on Supabase's side, so Docker isn't needed). The uncensored model is what gets the cruder names; the Ollama server must have it pulled (`ollama pull llama2-uncensored`). If the model server needs a key (a Runpod Serverless endpoint does), also set `AI_INFERENCE_API_KEY`; it's sent as `Authorization: Bearer <key>`.
 4. In Supabase → Authentication → URL Configuration, set the site URL to the production domain and allow `<domain>/login` as a redirect (used by confirmation emails).
 5. Make yourself an admin in Supabase → SQL Editor:
    `insert into public.borg_admins (user_id) select id from auth.users where email = 'you@example.com';`

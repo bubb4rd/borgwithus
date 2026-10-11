@@ -430,15 +430,27 @@ export function buildMessages(
   };
 }
 
+/** Where the Ollama model runs. `apiKey` is sent as a Bearer token (Runpod requires one). */
+export type ModelServer = { host: string; apiKey?: string };
+
+/** AI_INFERENCE_API_HOST and the optional AI_INFERENCE_API_KEY, or null when no host is set. */
+export function modelServer(): ModelServer | null {
+  const host = Deno.env.get("AI_INFERENCE_API_HOST")?.replace(/\/$/, "");
+  if (!host) return null;
+  return { host, apiKey: Deno.env.get("AI_INFERENCE_API_KEY") || undefined };
+}
+
 export async function askModel(
-  host: string,
+  server: ModelServer,
   model: string,
   messages: { role: string; content: string }[],
   temperature: number,
 ) {
-  const response = await fetch(`${host}/api/chat`, {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (server.apiKey) headers.Authorization = `Bearer ${server.apiKey}`;
+  const response = await fetch(`${server.host}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     body: JSON.stringify({
       model,
