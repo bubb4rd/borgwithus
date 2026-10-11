@@ -1020,6 +1020,15 @@
   font-size: 0.8125rem;
 }
 
+.form-note {
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  border: 2px solid var(--ink);
+  background: rgba(15, 14, 18, 0.06);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -1457,6 +1466,23 @@
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link-button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .auth-sent {

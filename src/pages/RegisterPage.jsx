@@ -6,13 +6,14 @@ import { useAuth } from "../context/AuthContext";
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function RegisterPage() {
-  const { user, ready, register } = useAuth();
+  const { user, ready, register, resendConfirmation } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from ?? "/";
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState(null);
+  const [resend, setResend] = useState("idle");
 
   if (ready && user) return <Navigate to={from} replace />;
 
@@ -39,6 +40,18 @@ export default function RegisterPage() {
     setBusy(false);
   };
 
+  const sendAgain = async () => {
+    setResend("sending");
+    setError(null);
+    try {
+      await resendConfirmation(confirmEmail);
+      setResend("sent");
+    } catch (err) {
+      setError(err.message);
+      setResend("idle");
+    }
+  };
+
   if (confirmEmail) {
     return (
       <AuthShell title="Check your inbox" lede="One more step before you can borg with us.">
@@ -47,6 +60,23 @@ export default function RegisterPage() {
           <p className="auth-sent">{confirmEmail}</p>
         </div>
         <p className="ai-note">Open the link in that email, then log in to grab your AI credits.</p>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        {resend === "sent" ? (
+          <p className="form-note" role="status">
+            Sent a fresh link. Check spam if it's not there in a minute.
+          </p>
+        ) : (
+          <p className="auth-switch">
+            Nothing yet?{" "}
+            <button type="button" className="link-button" onClick={sendAgain} disabled={resend === "sending"}>
+              {resend === "sending" ? "Sending…" : "Send it again"}
+            </button>
+          </p>
+        )}
         <div className="label-actions">
           <Link to="/login" state={location.state} className="btn btn-ink">
             Go to log in
