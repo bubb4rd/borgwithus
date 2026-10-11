@@ -1,0 +1,46 @@
+# Builds the BORG AI model server image (infra/ollama-worker) and pushes it to GHCR for the Runpod
+# Serverless endpoint. Runs on GitHub's machines, so nothing is built or downloaded locally.
+name: ollama-worker image
+
+on:
+  push:
+    paths:
+      - infra/ollama-worker/**
+      - .github/workflows/ollama-worker.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: infra/ollama-worker
+          push: true
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:latest
+            ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }}
+      # Runs the pushed image like a Runpod worker, on CPU: /ping must go 204 -> 200 once the model
+      # is loaded, then a short /api/chat must answer through port 80. Nothing is downloaded.
+      - name: Smoke-test the worker
+        run: |
+          docker run -d --name worker -p 8080:8000 ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }}
+          for i in $(seq 1 120); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/ping || true)
+            echo "ping $i: $code"; [ "$code" = 200 ] && break; sleep 5
+          done
+          chat=$(curl -sf --max-time 300 localhost:8080/api/chat -d '{"model":"llama2-uncensored","stream":false,"options":{"num_predict":8},"messages":[{"role":"user","content":"Say hi"}]}') || chat=FAILED
+          echo "chat: $chat"
+          docker logs worker 2>&1 | grep -E "worker.py|inference compute|error" || true
+          [ "$code" = 200 ] && [ "$chat" != FAILED ]
