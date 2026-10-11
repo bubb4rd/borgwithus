@@ -321,23 +321,31 @@ export function codeSwap(original: string) {
 export type Avoid = { names: AvoidEntry[]; originals: AvoidEntry[] };
 
 /**
+ * Why an original the model picked offers no name at all: it repeats a known original, its only
+ * names repeat known ones, or the model wrote no usable name and the code couldn't swap it.
+ */
+export type LostReason = "known-original" | "known-name" | "no-name";
+
+/**
  * Turns a batch of drafts into BORG names. Each fresh original (one that repeats nothing in
  * `avoid` or earlier in the batch) offers up to two swaps, the model's own when it really swaps a
  * sound (`swapsSound`) and the code's (`codeSwap`), plus the model's name as a tacked-on fallback
  * when it doesn't. Names that repeat a known one are skipped. `pair` is a random swap, else a
  * random tacked-on name (a weak name beats an empty roll), else null. `repeats` holds drafts whose
- * original or model name was already known.
+ * original or model name was already known; `lost` holds every draft that offers nothing, and why.
  */
 export function pickPair(drafts: Draft[], avoid: Avoid, random = Math.random) {
   const swaps: Candidate[] = [];
   const tackedOn: Candidate[] = [];
   const repeats: Draft[] = [];
+  const lost: (Draft & { reason: LostReason })[] = [];
   const taken: Avoid = { names: [], originals: [] };
   const isKnownName = (name: string) => isNearDuplicate(name, avoid.names) || isNearDuplicate(name, taken.names);
   for (const draft of drafts) {
     const { original, name } = draft;
     if (isNearDuplicate(original, avoid.originals) || isNearDuplicate(original, taken.originals)) {
       repeats.push(draft);
+      lost.push({ ...draft, reason: "known-original" });
       continue;
     }
     const modelName = name && !isKnownName(name) ? name : null;
@@ -347,7 +355,8 @@ export function pickPair(drafts: Draft[], avoid: Avoid, random = Math.random) {
       offered.push({ original, name: modelName, source: "model" });
     }
     const coded = codeSwap(original);
-    if (coded && !isKnownName(coded) && compactKey(coded) !== compactKey(modelName ?? "")) {
+    const codedKnown = coded !== null && isKnownName(coded);
+    if (coded && !codedKnown && compactKey(coded) !== compactKey(modelName ?? "")) {
       offered.push({ original, name: coded, source: "code" });
     }
     swaps.push(...offered);
@@ -355,12 +364,15 @@ export function pickPair(drafts: Draft[], avoid: Avoid, random = Math.random) {
       tackedOn.push({ original, name: modelName, source: "model" });
       offered.push({ original, name: modelName, source: "model" });
     }
-    if (!offered.length) continue;
+    if (!offered.length) {
+      lost.push({ ...draft, reason: (name && !modelName) || codedKnown ? "known-name" : "no-name" });
+      continue;
+    }
     taken.originals.push(...avoidEntries([original]));
     taken.names.push(...avoidEntries(offered.map((pair) => pair.name)));
   }
   const best = swaps.length ? swaps : tackedOn;
-  return { pair: best.length ? best[Math.floor(random() * best.length)] : null, swaps, tackedOn, repeats };
+  return { pair: best.length ? best[Math.floor(random() * best.length)] : null, swaps, tackedOn, repeats, lost };
 }
 
 export type PromptInput = {

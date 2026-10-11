@@ -192,7 +192,37 @@ Deno.test("pickPair only picks a tacked-on name when no swap exists", () => {
 
 Deno.test("pickPair returns no pair when nothing is usable", () => {
   const result = pickPair([{ original: "Thor", name: null }], noAvoid(), seeded(6));
-  assertEquals(result, { pair: null, swaps: [], tackedOn: [], repeats: [] });
+  assertEquals(result, {
+    pair: null,
+    swaps: [],
+    tackedOn: [],
+    repeats: [],
+    lost: [{ original: "Thor", name: null, reason: "no-name" }],
+  });
+});
+
+Deno.test("pickPair says why each original that offers nothing was lost", () => {
+  const drafts: Draft[] = [
+    { original: "Morgan Freeman", name: "Borgan Freeman" },
+    { original: "Ron Burgundy", name: "Ron Borgundy" },
+    { original: "Ron Burgandy", name: "Ron Borgandy" },
+    { original: "Hulk", name: "Hulkborg" },
+    { original: "Michael Jordan", name: null },
+    { original: "Thor", name: null },
+  ];
+  const avoid = {
+    names: avoidEntries(["Hulkborg", "Michael Borgan"]),
+    originals: avoidEntries(["Morgan Freeman"]),
+  };
+  const result = pickPair(drafts, avoid, seeded(7));
+  assertEquals(result.swaps, [{ original: "Ron Burgundy", name: "Ron Borgundy", source: "model" }]);
+  assertEquals(result.lost, [
+    { original: "Morgan Freeman", name: "Borgan Freeman", reason: "known-original" },
+    { original: "Ron Burgandy", name: "Ron Borgandy", reason: "known-original" },
+    { original: "Hulk", name: "Hulkborg", reason: "known-name" },
+    { original: "Michael Jordan", name: null, reason: "known-name" },
+    { original: "Thor", name: null, reason: "no-name" },
+  ]);
 });
 
 const input = (config: PromptConfig, prompt: string, topic: string | null): PromptInput => ({

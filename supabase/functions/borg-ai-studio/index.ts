@@ -9,6 +9,8 @@ import { corsHeaders, json } from "../_shared/http.ts";
 //   pairs    every name on offer: { original, name, source: "model" | "code", swap }, real sound
 //            swaps first, then the model's tacked-on names (swap false)
 //   dropped  the model's lines whose original or name was already known: { original, name }
+//   lost     the model's originals that offer no name at all, and why: { original, name, reason }
+//            (see LostReason); originals the model never wrote a usable line for aren't in it
 //   topic    the random topic picked for a blank theme (null with a theme)
 //   prompt   { system, user }, exactly what the model was sent
 //   raw      the model's reply as is
@@ -101,5 +103,6 @@ Deno.serve(async (req) => {
       ...batch.tackedOn.map((pair) => ({ ...pair, swap: false })),
     ],
     dropped: batch.repeats,
+    lost: batch.lost.map(({ original, name, reason }) => ({ original, name, reason })),
   });
 });
