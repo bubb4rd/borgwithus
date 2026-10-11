@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { askModel, buildMessages, extractDrafts, pickPair } from "../_shared/borg-ai.ts";
+import { askModel, buildMessages, extractDrafts, modelServer, pickPair } from "../_shared/borg-ai.ts";
 import { loadBatchSetup } from "../_shared/borg-setup.ts";
 import { corsHeaders, json } from "../_shared/http.ts";
 
@@ -9,6 +9,8 @@ import { corsHeaders, json } from "../_shared/http.ts";
 //   pairs    every name on offer: { original, name, source: "model" | "code", swap }, real sound
 //            swaps first, then the model's tacked-on names (swap false)
 //   dropped  the model's lines whose original or name was already known: { original, name }
+//   lost     the model's originals that offer no name at all, and why: { original, name, reason }
+//            (see LostReason); originals the model never wrote a usable line for aren't in it
 //   topic    the random topic picked for a blank theme (null with a theme)
 //   prompt   { system, user }, exactly what the model was sent
 //   raw      the model's reply as is
@@ -27,7 +29,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const modelHost = Deno.env.get("AI_INFERENCE_API_HOST")?.replace(/\/$/, "");
+  const server = modelServer();
 
   const authorization = req.headers.get("Authorization");
   if (!authorization) return json({ error: "Admins only." }, 403);
@@ -50,7 +52,7 @@ Deno.serve(async (req) => {
   }
   const siteNames = Array.isArray(body.avoid) ? body.avoid.slice(0, MAX_AVOID_NAMES) : [];
 
-  if (!modelHost) {
+  if (!server) {
     console.error("AI_INFERENCE_API_HOST is not set");
     return json({ error: "BORG AI is offline right now." }, 503);
   }
@@ -72,7 +74,7 @@ Deno.serve(async (req) => {
   const started = Date.now();
   let raw: string;
   try {
-    raw = await askModel(modelHost, MODEL, messages, setup.config.temperature);
+    raw = await askModel(server, MODEL, messages, setup.config.temperature);
   } catch (error) {
     console.error("borg-ai-studio model error:", error);
     const timedOut = error instanceof DOMException && error.name === "TimeoutError";
@@ -101,5 +103,6 @@ Deno.serve(async (req) => {
       ...batch.tackedOn.map((pair) => ({ ...pair, swap: false })),
     ],
     dropped: batch.repeats,
+    lost: batch.lost.map(({ original, name, reason }) => ({ original, name, reason })),
   });
 });

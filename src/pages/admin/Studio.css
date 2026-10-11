@@ -277,6 +277,21 @@ select.studio-input {
   font-size: 1.15rem;
 }
 
+/* Originals asked for that offer no name: listed so a short batch says why, but out of the way. */
+.studio-lost {
+  margin-top: 0.25rem;
+  border-top: 1px dashed var(--rule);
+}
+
+.studio-result.is-lost {
+  border-left: 3px dashed var(--studio-bad);
+  opacity: 0.75;
+}
+
+.studio-result.is-lost .studio-name {
+  font-size: 1.1rem;
+}
+
 .studio-source {
   display: inline-block;
   margin-left: 0.35rem;
@@ -295,6 +310,8 @@ select.studio-input {
 .studio-source.is-model { border-color: var(--studio-model); color: var(--studio-model); }
 .studio-source.is-code { border-color: var(--studio-code); color: var(--studio-code); }
 .studio-source.is-tacked { border-color: var(--rule); color: var(--paper-dim); border-style: dashed; }
+.studio-source.is-lost { border-color: var(--studio-bad); color: var(--studio-bad); border-style: dashed; cursor: default; }
+.studio-source.is-missing { border-color: var(--rule); color: var(--paper-dim); border-style: dashed; cursor: default; }
 
 .studio-run-stats {
   display: flex;
@@ -311,6 +328,7 @@ select.studio-input {
 .studio-run-stats b { color: var(--paper); }
 .studio-run-stats .is-model b { color: var(--studio-model); }
 .studio-run-stats .is-code b { color: var(--studio-code); }
+.studio-run-stats .is-lost b { color: var(--studio-bad); }
 .studio-run-stats .is-zero { opacity: 0.45; }
 
 .studio-cooking {
@@ -685,6 +703,47 @@ select.studio-input {
 .studio-add-example .studio-row-error {
   grid-column: 1 / -1;
 }
+
+/* ---------- quick add from the board ---------- */
+
+.studio-board {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.studio-board-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.studio-board-head .studio-input {
+  flex: 1 1 12rem;
+}
+
+.studio-board-list {
+  max-height: 16rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.studio-board .studio-row-error {
+  margin-bottom: 0.5rem;
+}
+
+.studio-board-note {
+  margin-top: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: var(--dash-mono-xs);
+  color: var(--paper-dim);
+}
+
+.studio-source.is-board-ai { border-color: var(--studio-model); color: var(--studio-model); }
+.studio-source.is-board-member { border-color: var(--studio-star); color: var(--studio-star); }
+.studio-source.is-board-classic { border-color: var(--rule); color: var(--paper-dim); }
 
 /* ---------- fine-tuning data ---------- */
 

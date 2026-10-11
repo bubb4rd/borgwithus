@@ -146,15 +146,22 @@ export function isUsableName(name: string) {
 
 const ARROW = /\s*(?:-+>|→|=>|[–—]>)\s*/;
 
+// Some replies label each side instead of using an arrow, on two lines ("Original: Halo" then
+// "BORG name: Halborg") or one ("Original: Halo, BORG name: Halborg"). Each such pair is rewritten
+// as "Halo -> Halborg" before the arrow parsing below.
+const LABELLED_PAIR =
+  /^[^\S\n]*(?:[*\-•>#]+[^\S\n]*|\d+[.)][^\S\n]*)?\**original\**[^\S\n]*[:=–—-][^\S\n]*([^\n|]+?)[^\S\n]*(?:[\n|,;][^\S\n]*)+\**(?:borg(?:ed)?(?:[^\S\n]+name)?|name)\**[^\S\n]*[:=–—-][^\S\n]*([^\n|]+)/gim;
+
 // Models list "Original -> Name" pairs one per line, or on one line split by "|" or commas, and
 // pad them with chatter, quotes, labels ("Original: …") and asides ("Name (Theme)"). Lines
-// without an arrow count when a single spaced dash splits them ("Donald Trump - Don Borgump").
-// The original is what follows the last label; for the name, the shortest fragment that still
-// reads as a borg name wins, or null when none does (code can still swap the original). Returns
-// one draft per usable original, without repeats.
+// without an arrow count when a single spaced dash splits them ("Donald Trump - Don Borgump"),
+// and labelled pairs count as above. The original is what follows the last label; for the name,
+// the shortest fragment that still reads as a borg name wins, or null when none does (code can
+// still swap the original). Returns one draft per usable original, without repeats.
 export function extractDrafts(raw: string) {
   const drafts = new Map<string, Draft>();
-  for (const entry of raw.split(/\r?\n|\||,\s+/)) {
+  const text = raw.replace(LABELLED_PAIR, "$1 -> $2");
+  for (const entry of text.split(/\r?\n|\||,\s+/)) {
     let sides = entry.split(ARROW);
     if (sides.length === 1) sides = entry.split(/\s+[-–—]\s+/);
     if (sides.length !== 2) continue;
@@ -321,23 +328,31 @@ export function codeSwap(original: string) {
 export type Avoid = { names: AvoidEntry[]; originals: AvoidEntry[] };
 
 /**
+ * Why an original the model picked offers no name at all: it repeats a known original, its only
+ * names repeat known ones, or the model wrote no usable name and the code couldn't swap it.
+ */
+export type LostReason = "known-original" | "known-name" | "no-name";
+
+/**
  * Turns a batch of drafts into BORG names. Each fresh original (one that repeats nothing in
  * `avoid` or earlier in the batch) offers up to two swaps, the model's own when it really swaps a
  * sound (`swapsSound`) and the code's (`codeSwap`), plus the model's name as a tacked-on fallback
  * when it doesn't. Names that repeat a known one are skipped. `pair` is a random swap, else a
  * random tacked-on name (a weak name beats an empty roll), else null. `repeats` holds drafts whose
- * original or model name was already known.
+ * original or model name was already known; `lost` holds every draft that offers nothing, and why.
  */
 export function pickPair(drafts: Draft[], avoid: Avoid, random = Math.random) {
   const swaps: Candidate[] = [];
   const tackedOn: Candidate[] = [];
   const repeats: Draft[] = [];
+  const lost: (Draft & { reason: LostReason })[] = [];
   const taken: Avoid = { names: [], originals: [] };
   const isKnownName = (name: string) => isNearDuplicate(name, avoid.names) || isNearDuplicate(name, taken.names);
   for (const draft of drafts) {
     const { original, name } = draft;
     if (isNearDuplicate(original, avoid.originals) || isNearDuplicate(original, taken.originals)) {
       repeats.push(draft);
+      lost.push({ ...draft, reason: "known-original" });
       continue;
     }
     const modelName = name && !isKnownName(name) ? name : null;
@@ -347,7 +362,8 @@ export function pickPair(drafts: Draft[], avoid: Avoid, random = Math.random) {
       offered.push({ original, name: modelName, source: "model" });
     }
     const coded = codeSwap(original);
-    if (coded && !isKnownName(coded) && compactKey(coded) !== compactKey(modelName ?? "")) {
+    const codedKnown = coded !== null && isKnownName(coded);
+    if (coded && !codedKnown && compactKey(coded) !== compactKey(modelName ?? "")) {
       offered.push({ original, name: coded, source: "code" });
     }
     swaps.push(...offered);
@@ -355,12 +371,15 @@ export function pickPair(drafts: Draft[], avoid: Avoid, random = Math.random) {
       tackedOn.push({ original, name: modelName, source: "model" });
       offered.push({ original, name: modelName, source: "model" });
     }
-    if (!offered.length) continue;
+    if (!offered.length) {
+      lost.push({ ...draft, reason: (name && !modelName) || codedKnown ? "known-name" : "no-name" });
+      continue;
+    }
     taken.originals.push(...avoidEntries([original]));
     taken.names.push(...avoidEntries(offered.map((pair) => pair.name)));
   }
   const best = swaps.length ? swaps : tackedOn;
-  return { pair: best.length ? best[Math.floor(random() * best.length)] : null, swaps, tackedOn, repeats };
+  return { pair: best.length ? best[Math.floor(random() * best.length)] : null, swaps, tackedOn, repeats, lost };
 }
 
 export type PromptInput = {
@@ -411,15 +430,27 @@ export function buildMessages(
   };
 }
 
+/** Where the Ollama model runs. `apiKey` is sent as a Bearer token (Runpod requires one). */
+export type ModelServer = { host: string; apiKey?: string };
+
+/** AI_INFERENCE_API_HOST and the optional AI_INFERENCE_API_KEY, or null when no host is set. */
+export function modelServer(): ModelServer | null {
+  const host = Deno.env.get("AI_INFERENCE_API_HOST")?.replace(/\/$/, "");
+  if (!host) return null;
+  return { host, apiKey: Deno.env.get("AI_INFERENCE_API_KEY") || undefined };
+}
+
 export async function askModel(
-  host: string,
+  server: ModelServer,
   model: string,
   messages: { role: string; content: string }[],
   temperature: number,
 ) {
-  const response = await fetch(`${host}/api/chat`, {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (server.apiKey) headers.Authorization = `Bearer ${server.apiKey}`;
+  const response = await fetch(`${server.host}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     body: JSON.stringify({
       model,

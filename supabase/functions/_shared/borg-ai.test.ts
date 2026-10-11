@@ -107,6 +107,22 @@ Deno.test("extractDrafts falls back to a spaced dash", () => {
   assertEquals(extractDrafts("Donald Trump - Don Borgumpf"), [{ original: "Donald Trump", name: "Don Borgumpf" }]);
 });
 
+Deno.test("extractDrafts reads pairs labelled Original / BORG name instead of an arrow", () => {
+  const raw = [
+    "Original: Halo",
+    "BORG name: Halborg",
+    "Original: Mario Kart",
+    "BORG name: Marionelborgg",
+    "1. **Original:** Burger King, **Borg name:** Borger King",
+    "Theme: music/albums",
+  ].join("\r\n");
+  assertEquals(extractDrafts(raw), [
+    { original: "Halo", name: "Halborg" },
+    { original: "Mario Kart", name: "Marionelborgg" },
+    { original: "Burger King", name: "Borger King" },
+  ]);
+});
+
 Deno.test("extractDrafts splits pipe- and comma-separated entries", () => {
   const expected = [
     { original: "Morgan Freeman", name: "Borgan Freeman" },
@@ -192,7 +208,37 @@ Deno.test("pickPair only picks a tacked-on name when no swap exists", () => {
 
 Deno.test("pickPair returns no pair when nothing is usable", () => {
   const result = pickPair([{ original: "Thor", name: null }], noAvoid(), seeded(6));
-  assertEquals(result, { pair: null, swaps: [], tackedOn: [], repeats: [] });
+  assertEquals(result, {
+    pair: null,
+    swaps: [],
+    tackedOn: [],
+    repeats: [],
+    lost: [{ original: "Thor", name: null, reason: "no-name" }],
+  });
+});
+
+Deno.test("pickPair says why each original that offers nothing was lost", () => {
+  const drafts: Draft[] = [
+    { original: "Morgan Freeman", name: "Borgan Freeman" },
+    { original: "Ron Burgundy", name: "Ron Borgundy" },
+    { original: "Ron Burgandy", name: "Ron Borgandy" },
+    { original: "Hulk", name: "Hulkborg" },
+    { original: "Michael Jordan", name: null },
+    { original: "Thor", name: null },
+  ];
+  const avoid = {
+    names: avoidEntries(["Hulkborg", "Michael Borgan"]),
+    originals: avoidEntries(["Morgan Freeman"]),
+  };
+  const result = pickPair(drafts, avoid, seeded(7));
+  assertEquals(result.swaps, [{ original: "Ron Burgundy", name: "Ron Borgundy", source: "model" }]);
+  assertEquals(result.lost, [
+    { original: "Morgan Freeman", name: "Borgan Freeman", reason: "known-original" },
+    { original: "Ron Burgandy", name: "Ron Borgandy", reason: "known-original" },
+    { original: "Hulk", name: "Hulkborg", reason: "known-name" },
+    { original: "Michael Jordan", name: null, reason: "known-name" },
+    { original: "Thor", name: null, reason: "no-name" },
+  ]);
 });
 
 const input = (config: PromptConfig, prompt: string, topic: string | null): PromptInput => ({
