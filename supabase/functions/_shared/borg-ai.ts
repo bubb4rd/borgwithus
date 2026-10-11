@@ -33,7 +33,9 @@ export const STYLE_PAIRS: Pair[] = [
 ];
 
 // Picked at random when the member leaves the theme blank, so blank rolls don't all start from
-// the same prompt and land on the same handful of names.
+// the same prompt and land on the same handful of names. Topics whose famous names carry a sound
+// codeSwap can turn into borg (bor, bur, ber, bar, or…) give more usable batches; Studio ratings
+// store the topic (borg_ai_ratings.topic), so keep or cut topics by their rating there.
 export const TOPICS = [
   "NBA players",
   "NFL players and teams",
@@ -45,26 +47,30 @@ export const TOPICS = [
   "horror movies",
   "Disney and Pixar",
   "cartoon characters",
+  "The Simpsons",
   "TV shows",
+  "reality TV",
   "video games",
+  "Pokémon",
+  "Star Wars",
+  "Lord of the Rings and Harry Potter",
   "Marvel and DC heroes",
+  "villains",
   "US presidents and politicians",
   "historical events",
+  "festivals and holidays",
   "world cities and landmarks",
   "countries",
+  "dinosaurs and wild animals",
   "fast food chains",
   "snacks and candy",
-  "breakfast cereals",
-  "drinks and cocktails",
-  "car brands",
+  "drinks and booze",
+  "luxury and car brands",
   "tech companies and CEOs",
   "scientists and inventors",
   "famous artists and paintings",
   "classic books and authors",
   "internet memes",
-  "reality TV",
-  "college life",
-  "board games and toys",
 ];
 
 export const SYSTEM_PROMPT = `You make BORG names: a famous person, place, brand, title or phrase with one sound swapped for "borg" so it still sounds like the original out loud.

@@ -28,7 +28,9 @@ import { supabase } from "../../lib/supabase";
 //   add_borg_example(p_original, p_name) -> example
 //   set_borg_example_enabled(p_id, p_enabled) -> void
 //   rate_borg_name(p_id, p_prompt_id, p_theme, p_original, p_name, p_source, p_verdict, p_reason,
-//                  p_fixed_name) -> rating       p_id null inserts, otherwise re-rates that row
+//                  p_fixed_name, p_topic) -> rating   p_id null inserts, otherwise re-rates that row;
+//                  p_topic (the batch's random topic) is kept only when the theme is blank
+//     (supabase/migrations/20261019000000_borg_ai_rating_topics.sql)
 //
 // Test batches come from the borg-ai-studio edge function (admins only, spends no credits, logs
 // no rolls; see supabase/functions/borg-ai-studio/index.ts):
@@ -105,7 +107,7 @@ export const addExample = ({ original, name }) => rpc("add_borg_example", { p_or
 export const setExampleEnabled = (id, enabled) =>
   rpc("set_borg_example_enabled", { p_id: id, p_enabled: enabled });
 
-export const rateName = ({ id, promptId, theme, original, name, source, verdict, reason, fixedName }) =>
+export const rateName = ({ id, promptId, theme, topic, original, name, source, verdict, reason, fixedName }) =>
   rpc("rate_borg_name", {
     p_id: id ?? null,
     p_prompt_id: promptId,
@@ -116,6 +118,7 @@ export const rateName = ({ id, promptId, theme, original, name, source, verdict,
     p_verdict: verdict,
     p_reason: reason || null,
     p_fixed_name: fixedName || null,
+    p_topic: topic ?? null,
   });
 
 /** `avoid`: the site's own names (BorgsContext), like a member roll. */

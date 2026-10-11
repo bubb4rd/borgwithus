@@ -802,6 +802,7 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
         id: prior?.id,
         promptId: run.promptId,
         theme: run.theme,
+        topic: run.topic,
         original: pair.original,
         name: pair.name,
         source: pair.source,
@@ -1781,7 +1782,7 @@ function RatingsLog({ ratings, prompts }) {
                     {r.reason}
                     {!r.fixed_name && !r.reason && <span className="is-zero">—</span>}
                   </td>
-                  <td className={r.theme ? "" : "is-zero"}>{r.theme || "random"}</td>
+                  <td className={r.theme ? "" : "is-zero"}>{r.theme || (r.topic ? `random: ${r.topic}` : "random")}</td>
                   <td>{versionName(byId.get(String(r.prompt_id)))}</td>
                   <td>
                     <Ago iso={r.created_at} />
