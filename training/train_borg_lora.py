@@ -13,9 +13,16 @@ import argparse
 import glob
 import json
 import os
+import shutil
 
 # The Hugging Face weights Ollama's llama2-uncensored is built from.
 BASE_MODEL = "georgesung/llama2_7b_chat_uncensored"
+# The base repo's tokenizer adds a [PAD] token at id 32000. Training with it grows the embedding
+# to 32001 rows while the merged weights keep 32000, so the GGUF fails to load ("token_embd.weight
+# has wrong shape"). This repo has the identical tokenizer.model without it: 32000 tokens, the
+# same as llama2-uncensored in Ollama.
+TOKENIZER = "unsloth/llama-2-7b"
+GGUF = "borg-llama.Q4_K_M.gguf"
 
 # llama2-uncensored's prompt template and stop words, as `ollama show llama2-uncensored` reports
 # them. Training text must use the same template the model will be run with.
@@ -73,12 +80,15 @@ def main():
         print(to_text(chats[0], "</s>"))
         return
 
-    # Imported here so --dry-run works without a GPU or these packages.
+    # Imported here so --dry-run works without a GPU or these packages. Unsloth goes first: it
+    # patches trl and transformers on import.
+    from unsloth import FastLanguageModel
     from datasets import Dataset
     from trl import SFTConfig, SFTTrainer
-    from unsloth import FastLanguageModel
 
-    model, tokenizer = FastLanguageModel.from_pretrained(BASE_MODEL, max_seq_length=MAX_LENGTH, load_in_4bit=True)
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        BASE_MODEL, tokenizer_name=TOKENIZER, max_seq_length=MAX_LENGTH, load_in_4bit=True
+    )
     model = FastLanguageModel.get_peft_model(
         model,
         r=16,
@@ -108,14 +118,20 @@ def main():
     trainer.train()
 
     # Merges the LoRA into the base and writes a q4_k_m GGUF, the size llama2-uncensored ships at.
-    model.save_pretrained_gguf(args.out, tokenizer, quantization_method="q4_k_m")
-    ggufs = sorted(glob.glob(os.path.join(args.out, "**", "*.gguf"), recursive=True), key=os.path.getmtime)
+    # The merged weights are only the converter's input and as large as the base download, so
+    # they go in a scratch folder that is removed once the GGUF is out. Unsloth writes the GGUF to
+    # a folder beside it (merged_gguf/ in current versions), hence the search.
+    merged = os.path.join(args.out, "merged")
+    model.save_pretrained_gguf(merged, tokenizer, quantization_method="q4_k_m")
+    ggufs = sorted(glob.glob(os.path.join(merged + "*", "**", "*.gguf"), recursive=True), key=os.path.getmtime)
     if not ggufs:
         raise SystemExit(f"No GGUF written under {args.out}")
-    gguf = os.path.relpath(ggufs[-1], args.out).replace(os.sep, "/")
+    os.replace(ggufs[-1], os.path.join(args.out, GGUF))
+    for scratch in (merged, merged + "_gguf"):
+        shutil.rmtree(scratch, ignore_errors=True)
     with open(os.path.join(args.out, "Modelfile"), "w", encoding="utf-8") as handle:
-        handle.write(MODELFILE.format(gguf=gguf))
-    print(f"Wrote {args.out}/{gguf} and {args.out}/Modelfile")
+        handle.write(MODELFILE.format(gguf=GGUF))
+    print(f"Wrote {args.out}/{GGUF} and {args.out}/Modelfile")
 
 
 if __name__ == "__main__":
