@@ -72,14 +72,7 @@ Deno.serve(async (req) => {
 
   try {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const { messages } = buildMessages({
-        config: setup.config,
-        prompt,
-        examples: setup.examplePool,
-        usedNames: [...repeats.flatMap(({ name }) => (name ? [name] : [])), ...setup.recent],
-        usedOriginals: [...repeats.map(({ original }) => original), ...setup.originals],
-        attempt,
-      });
+      const { messages } = buildMessages({ config: setup.config, prompt, repeats, attempt });
       const raw = await askModel(server, MODEL, messages, setup.config.temperature);
       const batch = pickPair(extractDrafts(raw), setup.avoid);
       if (batch.pair) {

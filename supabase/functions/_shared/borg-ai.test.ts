@@ -1,17 +1,21 @@
 // The BORG name rules in borg-ai.ts, checked with fixed inputs: `npm run test:ai`.
-import { assert, assertEquals, assertFalse, assertStringIncludes } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
 import {
   avoidEntries,
   BATCH_SIZE,
   buildMessages,
   BUILT_IN_PROMPT,
   codeSwap,
+  DEMO_THEME,
   type Draft,
   extractDrafts,
+  formatDemo,
   isNearDuplicate,
   pickPair,
   type PromptConfig,
   type PromptInput,
+  STYLE_PAIRS,
+  swapPosition,
   swapsSound,
 } from "./borg-ai.ts";
 
@@ -241,15 +245,15 @@ Deno.test("pickPair says why each original that offers nothing was lost", () => 
   ]);
 });
 
-const input = (config: PromptConfig, prompt: string, topic: string | null): PromptInput => ({
+const input = (config: PromptConfig, prompt: string, topic: string | null, attempt = 1, repeats: Draft[] = []): PromptInput => ({
   config,
   prompt,
   topic,
-  examples: ["Ron Borgundy", "SpongeBorg"],
-  usedNames: [],
-  usedOriginals: [],
-  attempt: 1,
+  repeats,
+  attempt,
 });
+
+const request = (messages: { content: string }[]) => messages[messages.length - 1].content;
 
 Deno.test("buildMessages fills {count} with the batch size", () => {
   const config = { ...BUILT_IN_PROMPT, systemPrompt: "Reply with {count} lines, {count} in all." };
@@ -260,22 +264,75 @@ Deno.test("buildMessages fills {count} with the batch size", () => {
 Deno.test("buildMessages uses the forced topic when the theme is blank", () => {
   const { topic, messages } = buildMessages(input(BUILT_IN_PROMPT, "", "rappers"), seeded(8));
   assertEquals(topic, "rappers");
-  assertStringIncludes(messages[1].content, "Theme: rappers");
+  assertEquals(request(messages), "Theme: rappers");
 });
 
 Deno.test("buildMessages prefers the theme over the topic", () => {
   const { topic, messages } = buildMessages(input(BUILT_IN_PROMPT, "pirates", "rappers"), seeded(9));
   assertEquals(topic, null);
-  assertStringIncludes(messages[1].content, "Theme from the user: pirates");
-  assertFalse(messages[1].content.includes("rappers"));
+  assertEquals(request(messages), "Theme from the user: pirates");
 });
 
-Deno.test("buildMessages leaves out format examples when formatCount is 0", () => {
+Deno.test("buildMessages sends the format examples as an earlier exchange, at most one batch of them", () => {
   const without = buildMessages(input({ ...BUILT_IN_PROMPT, formatCount: 0 }, "pirates", null), seeded(10));
-  assertFalse(without.messages[1].content.includes("Format examples:"));
+  assertEquals(without.messages.map(({ role }) => role), ["system", "user"]);
 
-  const withTwo = buildMessages(input({ ...BUILT_IN_PROMPT, formatCount: 2 }, "pirates", null), seeded(10));
-  const lines = withTwo.messages[1].content.split("\n");
-  assertEquals(lines[0], "Format examples:");
-  assert(lines[1].includes(" -> ") && lines[2].includes(" -> ") && !lines[3].includes(" -> "));
+  const ten = buildMessages(input({ ...BUILT_IN_PROMPT, formatCount: 10 }, "pirates", null), seeded(10));
+  assertEquals(ten.messages.map(({ role }) => role), ["system", "user", "assistant", "user"]);
+  assertEquals(ten.messages[1].content, DEMO_THEME);
+  const lines = ten.messages[2].content.split("\n");
+  assertEquals(lines.length, BATCH_SIZE);
+  assert(lines.every((line) => line.includes(" -> ")));
+});
+
+Deno.test("buildMessages lists repeats only on retries", () => {
+  const repeats: Draft[] = [{ original: "Morgan Freeman", name: "Borgan Freeman" }, { original: "Thor", name: null }];
+  const first = buildMessages(input(BUILT_IN_PROMPT, "", "rappers", 1, repeats), seeded(11));
+  assertEquals(request(first.messages), "Theme: rappers");
+
+  const retry = buildMessages(input(BUILT_IN_PROMPT, "", "rappers", 2, repeats), seeded(11));
+  assertEquals(request(retry.messages).split("\n"), [
+    "Used originals: Morgan Freeman | Thor",
+    "Used names: Borgan Freeman",
+    "Theme: rappers",
+    "Reply with ONLY the new lines, each in the form: Original -> BORG name",
+  ]);
+});
+
+Deno.test("the built-in pairs are real swaps at the start, middle and end of a name", () => {
+  for (const pair of STYLE_PAIRS) assert(swapsSound(pair), `${pair.original} -> ${pair.name}`);
+  assertEquals(new Set(STYLE_PAIRS.map(({ name }) => swapPosition(name))), new Set(["start", "middle", "end"]));
+});
+
+Deno.test("swapPosition finds where borg sits in the name", () => {
+  assertEquals(swapPosition("Borgan Freeman"), "start");
+  assertEquals(swapPosition("Ron Borgundy"), "middle");
+  assertEquals(swapPosition("Playborg Carti"), "middle");
+  assertEquals(swapPosition("Heisenborg"), "end");
+  assertEquals(swapPosition("Kareem Abdul-Jaborg"), "end");
+});
+
+Deno.test("formatDemo shows only real swaps, spread over start, middle and end", () => {
+  const pool = [
+    { original: "Morgan Freeman", name: "Borgan Freeman" },
+    { original: "Porcupine", name: "Borgupine" },
+    { original: "Playboi Carti", name: "Playborg Carti" },
+    { original: "Mitsubishi", name: "Mitsuborgshi" },
+    { original: "Heisenberg", name: "Heisenborg" },
+    { original: "SpongeBob", name: "SpongeBorg" },
+    { original: "Taylor Swift", name: "Taylorborg" },
+    { original: "Dora", name: "Borga the Explorer" },
+  ];
+  for (let seed = 1; seed <= 20; seed++) {
+    const demo = formatDemo(pool, 3, seeded(seed));
+    assertEquals(demo.length, 3);
+    assert(demo.every(swapsSound), "only real swaps");
+    assertEquals(new Set(demo.map(({ name }) => swapPosition(name))).size, 3, `seed ${seed}: one of each place`);
+  }
+});
+
+Deno.test("formatDemo falls back to the built-in pairs when no pair is a real swap", () => {
+  const demo = formatDemo([{ original: "Taylor Swift", name: "Taylorborg" }], 2, seeded(3));
+  assertEquals(demo.length, 2);
+  assert(demo.every((pair) => STYLE_PAIRS.includes(pair)));
 });

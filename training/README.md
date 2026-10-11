@@ -47,7 +47,7 @@ Tested end to end on Windows: train, GGUF export, `ollama create`, and a roll th
 with the live system prompt. `unsloth`, `trl` and `datasets` APIs move fast, so a new version may
 need the script adjusted.
 
-Known gap: training chats carry only the theme as the user message, while a live roll's user
-message also lists format examples, "More BORG names" and used names/originals
-(`buildMessages` in `supabase/functions/_shared/borg-ai.ts`). The model is tuned on a shorter
-prompt than it is served.
+Known gap: training chats are system prompt, theme and reply, while a live roll also sends a
+format demo exchange before the theme ("Theme: anything goes" answered with example lines; see
+`buildMessages` in `supabase/functions/_shared/borg-ai.ts`), and retries list the repeated
+originals and names.
