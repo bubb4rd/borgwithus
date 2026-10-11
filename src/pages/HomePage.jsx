@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import data from "../data.json";
+import { useBorgs } from "../context/BorgsContext";
 import About from "../components/About";
 import AiGenerator from "../components/AiGenerator";
 import Borg from "../components/Borg";
@@ -14,6 +14,7 @@ import SubmitBorg from "../components/SubmitBorg";
 
 export default function HomePage() {
   const { hash } = useLocation();
+  const { featured } = useBorgs();
 
   // Coming back from /login with a target like "/#ai": jump to that section.
   useEffect(() => {
@@ -25,12 +26,14 @@ export default function HomePage() {
       <NavBar />
       <main>
         <Home />
-        <Marquee
-          className="names"
-          items={data.featured}
-          href="#borg"
-          label="Generate your own borg name"
-        />
+        {featured.length > 0 && (
+          <Marquee
+            className="names"
+            items={featured}
+            href="#borg"
+            label="Generate your own borg name"
+          />
+        )}
         <About />
         <Recipe />
         <div className="wrap generators">

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import data from "../data.json";
+import { useBorgs } from "../context/BorgsContext";
 import { supabase } from "../lib/supabase";
 import LikeButton from "./LikeButton";
 
@@ -17,11 +18,13 @@ function logRoll(kind, name) {
 }
 
 export default function Borg() {
+  const { names } = useBorgs();
   const [name, setName] = useState(null);
   const [flavour, setFlavour] = useState(null);
 
   const rollName = () => {
-    const next = pickDifferent(data.borgs, name);
+    if (!names.length) return;
+    const next = pickDifferent(names, name);
     setName(next);
     logRoll("borg", next);
   };

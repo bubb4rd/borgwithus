@@ -4,6 +4,7 @@ import SubpageHeader from "../../components/SubpageHeader";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { timeAgo } from "../../lib/timeAgo";
+import Borgs from "./Borgs";
 import { DailyChart, MixBar, Sparkline } from "./charts";
 import { Empty, Panel } from "./Panel";
 import Studio from "./Studio";
@@ -32,8 +33,10 @@ const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const KIND_LABEL = { borg: "Borg", mio: "Mio", ai: "AI" };
 const TABS = [
   { key: "dashboard", label: "Dashboard" },
+  { key: "borgs", label: "Borgs" },
   { key: "studio", label: "AI Borg Studio" },
 ];
+const TAB_KEYS = new Set(TABS.map((option) => option.key));
 
 /* ---------- small pieces ---------- */
 
@@ -826,7 +829,7 @@ export default function AdminPage() {
   const { user, ready, online, isAdmin } = useAuth();
   const [params, setParams] = useSearchParams();
   const range = parseRange(params.get("days"));
-  const tab = params.get("tab") === "studio" ? "studio" : "dashboard";
+  const tab = TAB_KEYS.has(params.get("tab")) ? params.get("tab") : "dashboard";
   const [state, setState] = useState({ status: "loading", data: null, range: null, loadedAt: null, error: null });
   const latest = useRef(0);
 
@@ -907,6 +910,8 @@ export default function AdminPage() {
 
           {tab === "studio" ? (
             <Studio />
+          ) : tab === "borgs" ? (
+            <Borgs />
           ) : (
             <>
               <div className="dash-head">

@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import data from "../data.json";
 import { useAuth } from "../context/AuthContext";
+import { useBorgs } from "../context/BorgsContext";
 import { supabase } from "../lib/supabase";
 import { timeAgo } from "../lib/timeAgo";
 import LikeButton from "./LikeButton";
@@ -10,16 +10,15 @@ import LikeButton from "./LikeButton";
 const MAX_NAME_LENGTH = 60;
 const FUSED_BORG = /\w+borg|borg\w+/i;
 
-// Letters and digits only: "Ron Borgundy" and "ron-borgundy!" are the same name.
-const nameKey = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-const CLASSICS = new Set(data.borgs.map(nameKey));
+// Letters and digits only, like borg_name_key(): "Sponge Borg" and "spongeborg!" are the same name.
+const nameKey = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 const tidy = (name) => name.replace(/\s+/g, " ").trim();
 
-function problemWith(name) {
+function problemWith(name, onBoard) {
   if (name.length < 3) return "Names need at least 3 characters.";
   if (!FUSED_BORG.test(name)) return 'Work "borg" into a word, like LeBorg James or Heisenborg.';
-  if (CLASSICS.has(nameKey(name))) return "That one's already a classic. Try another.";
+  if (onBoard.has(nameKey(name))) return "That one's already on the board. Try another.";
   return null;
 }
 
@@ -82,6 +81,8 @@ function OfflinePanel() {
 }
 
 function SubmitPanel({ quota, wallRows, onPosted }) {
+  const { names } = useBorgs();
+  const onBoard = useMemo(() => new Set(names.map(nameKey)), [names]);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState(null);
@@ -96,7 +97,7 @@ function SubmitPanel({ quota, wallRows, onPosted }) {
     event.preventDefault();
     if (posting || outOfQuota) return;
 
-    const problem = problemWith(name);
+    const problem = problemWith(name, onBoard);
     if (problem) {
       setError(problem);
       return;
