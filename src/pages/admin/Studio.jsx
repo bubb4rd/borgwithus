@@ -1,4 +1,5 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { useBorgs } from "../../context/BorgsContext";
 import { timeAgo } from "../../lib/timeAgo";
 import { fmt, fmtDateTime, fmtDec, fmtPct, ratio } from "./metrics";
 import { Empty, Panel } from "./Panel";
@@ -6,11 +7,7 @@ import * as api from "./studioApi";
 import { dpoLines, sftLines, TRAINING_TARGET, trainingPairs } from "./trainingData";
 import "./Studio.css";
 
-const VERDICTS = {
-  good: { icon: "👍", label: "Good" },
-  bad: { icon: "👎", label: "Bad" },
-  fixed: { icon: "✏️", label: "Fixed" },
-};
+const VERDICTS = { good: { label: "Good" }, bad: { label: "Bad" }, fixed: { label: "Fixed" } };
 const NO_RATINGS = { good: 0, bad: 0, fixed: 0, model_good: 0, model_rated: 0 };
 const BLANK_DRAFT = { baseId: null, label: "", systemPrompt: "", temperature: 1, exampleCount: 3 };
 const MAX_LABEL_LENGTH = 60;
@@ -27,6 +24,7 @@ const TOKENS_PER_EXAMPLE = 12;
 const USER_MESSAGE_TOKENS = 150;
 const REPLY_SECONDS = 25;
 const MODEL_CUTOFF_SECONDS = 60;
+const tokensIn = (text) => Math.ceil(text.length / 4);
 
 /** Who made a name: the model's real swap, the code's swap of the model's original, or a tacked-on model name. */
 function SourceChip({ source, swap = true }) {
@@ -51,6 +49,17 @@ const draftFrom = (prompt) => ({
   temperature: prompt.temperature,
   exampleCount: prompt.example_count,
 });
+
+/** Saves `text` as a file in the browser. */
+function download(filename, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: filename });
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Today as YYYY-MM-DD, for file names. */
+const stampToday = () => new Date().toISOString().slice(0, 10);
 
 function Ago({ iso }) {
   return (
@@ -103,11 +112,15 @@ function Tally({ counts, unrated }) {
   return (
     <p className="studio-tally">
       {Object.entries(VERDICTS).map(([key, v]) => (
-        <span key={key} className={`is-${key}`}>
-          {v.icon} {fmt(counts[key])}
+        <span key={key} className={`is-${key}${counts[key] ? "" : " is-zero"}`}>
+          <b>{fmt(counts[key])}</b> {v.label.toLowerCase()}
         </span>
       ))}
-      {unrated != null && <span>{fmt(unrated)} unrated</span>}
+      {unrated != null && (
+        <span className={unrated ? "" : "is-zero"}>
+          <b>{fmt(unrated)}</b> unrated
+        </span>
+      )}
     </p>
   );
 }
@@ -343,33 +356,33 @@ function Elapsed({ since }) {
   return <>{Math.max(0, Math.round((now - since) / 1000))} s</>;
 }
 
-/** What the batch turned into: originals on offer out of those asked for, and who made the names. */
-function RunStats({ run, kept, missing }) {
+/**
+ * The model run at a glance: how long the model took, how much it was sent, the originals on
+ * offer out of those asked for, and who made the names.
+ */
+function RunFacts({ run, kept, missing }) {
   const ai = run.pairs.filter((pair) => pair.source === "model" && pair.swap).length;
   const code = run.pairs.filter((pair) => pair.source === "code").length;
   const tacked = run.pairs.filter((pair) => !pair.swap).length;
+  const facts = [
+    ["Model time", run.ms != null ? `${fmtDec(run.ms / 1000, 1)} s` : "—", ""],
+    ["Tokens sent", run.prompt ? `≈${fmt(tokensIn(run.prompt.system) + tokensIn(run.prompt.user))}` : "—", ""],
+    ["Originals", `${fmt(kept)}/${fmt(api.BATCH_SIZE)}`, kept ? "" : "is-lost"],
+    ["AI swaps", fmt(ai), ai ? "is-model" : "is-zero"],
+    ["Code swaps", fmt(code), code ? "is-code" : "is-zero"],
+    ["Tacked on", fmt(tacked), tacked ? "" : "is-zero"],
+    ["Thrown out", fmt(run.lost.length), run.lost.length ? "is-lost" : "is-zero"],
+    ["Missing", fmt(missing), missing ? "is-lost" : "is-zero"],
+  ];
   return (
-    <p className="studio-run-stats">
-      <span>
-        <b>{fmt(kept)}</b> of {fmt(api.BATCH_SIZE)} originals
-      </span>
-      <span className="is-model">
-        <b>{fmt(ai)}</b> AI swaps
-      </span>
-      <span className="is-code">
-        <b>{fmt(code)}</b> code swaps
-      </span>
-      <span className={tacked ? "" : "is-zero"}>
-        <b>{fmt(tacked)}</b> tacked on
-      </span>
-      <span className={run.lost.length ? "is-lost" : "is-zero"}>
-        <b>{fmt(run.lost.length)}</b> thrown out
-      </span>
-      <span className={missing ? "is-lost" : "is-zero"}>
-        <b>{fmt(missing)}</b> missing
-      </span>
-      {run.ms != null && <span>{fmtDec(run.ms / 1000, 1)} s</span>}
-    </p>
+    <dl className="studio-facts">
+      {facts.map(([label, value, tone]) => (
+        <div key={label} className={tone}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -417,29 +430,86 @@ function LostRows({ lost, missing }) {
   );
 }
 
-/** Exactly what the model was sent and said back. */
-function UnderTheHood({ prompt, raw, dropped = [] }) {
-  if (!prompt) return null;
+/** Copies `text` to the clipboard and says so for a moment. */
+function CopyButton({ text, what }) {
+  const [state, setState] = useState("idle");
+
+  useEffect(() => {
+    if (state === "idle") return undefined;
+    const timer = setTimeout(() => setState("idle"), 1600);
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setState("copied");
+    } catch {
+      setState("failed");
+    }
+  };
+
   return (
-    <details className="studio-under">
-      <summary>Under the hood: prompt sent and raw reply</summary>
-      <p className="studio-under-label">System</p>
-      <pre>{prompt.system}</pre>
-      <p className="studio-under-label">User</p>
-      <pre>{prompt.user}</pre>
-      {raw != null && (
-        <>
-          <p className="studio-under-label">Raw reply</p>
-          <pre>{raw || "(empty)"}</pre>
-        </>
-      )}
-      {dropped.length > 0 && (
-        <>
-          <p className="studio-under-label">Dropped as repeats</p>
-          <pre>{dropped.map((d) => `${d.original} -> ${d.name ?? "(no usable name)"}`).join("\n")}</pre>
-        </>
-      )}
-    </details>
+    <button
+      type="button"
+      className={`studio-copy${state === "idle" ? "" : ` is-${state}`}`}
+      aria-label={state === "idle" ? `Copy ${what}` : undefined}
+      aria-live="polite"
+      disabled={!text}
+      onClick={copy}
+    >
+      {state === "copied" ? "Copied" : state === "failed" ? "Copy failed" : "Copy"}
+    </button>
+  );
+}
+
+function TranscriptCard({ title, meta, text, empty, children }) {
+  return (
+    <section className="studio-transcript-card" aria-label={title}>
+      <header className="studio-transcript-head">
+        <p>
+          <b>{title}</b>
+          {meta && <span> · {meta}</span>}
+        </p>
+        <CopyButton text={text} what={title.toLowerCase()} />
+      </header>
+      {text ? <pre>{text}</pre> : <p className="studio-transcript-empty">{empty}</p>}
+      {children}
+    </section>
+  );
+}
+
+const indent = (text) => text.replace(/^/gm, "  ");
+const plural = (n, one, many) => `${fmt(n)} ${n === 1 ? one : many}`;
+
+/** Exactly what the model was sent and said back, side by side and ready to copy. */
+function RunTranscript({ prompt, raw, dropped = [] }) {
+  if (!prompt) return null;
+  const sent = `system:\n${indent(prompt.system)}\nuser:\n${indent(prompt.user)}`;
+  const lines = raw ? raw.split("\n").filter((line) => line.trim()).length : 0;
+  let replyMeta = raw == null ? "none" : plural(lines, "line", "lines");
+  if (dropped.length) replyMeta += ` · ${plural(dropped.length, "dropped as a repeat", "dropped as repeats")}`;
+  return (
+    <div className="studio-transcript">
+      <TranscriptCard
+        title="Prompt sent"
+        meta={`≈${fmt(tokensIn(prompt.system) + tokensIn(prompt.user))} tokens`}
+        text={sent}
+      />
+      <TranscriptCard
+        title="Raw reply"
+        meta={replyMeta}
+        text={raw ?? ""}
+        empty={raw == null ? "No reply came back." : "The model sent back nothing."}
+      >
+        {dropped.length > 0 && (
+          <>
+            <p className="studio-transcript-label">Dropped as repeats</p>
+            <pre>{dropped.map((d) => `${d.original} -> ${d.name ?? "(no usable name)"}`).join("\n")}</pre>
+          </>
+        )}
+      </TranscriptCard>
+    </div>
   );
 }
 
@@ -498,7 +568,7 @@ function BatchColumn({
       )}
 
       {!run ? (
-        <Empty>Pick a theme and generate.</Empty>
+        <Empty></Empty>
       ) : run.status === "queued" ? (
         <Empty>Waiting for {run.queuedBehind}: the model server answers one batch at a time.</Empty>
       ) : run.status === "loading" ? (
@@ -517,7 +587,7 @@ function BatchColumn({
           <p className="dash-banner is-error" role="alert">
             {run.error}
           </p>
-          <UnderTheHood prompt={run.prompt} raw={null} />
+          <RunTranscript prompt={run.prompt} raw={null} />
         </>
       ) : (
         <>
@@ -528,7 +598,7 @@ function BatchColumn({
             </p>
             <Tally counts={counts} unrated={run.pairs.length - rated} />
           </div>
-          <RunStats run={run} kept={kept} missing={missing} />
+          <RunFacts run={run} kept={kept} missing={missing} />
           {run.pairs.length === 0 ? (
             <Empty>No names on offer: every original was thrown out, failed or missing.</Empty>
           ) : (
@@ -553,7 +623,7 @@ function BatchColumn({
             </ol>
           )}
           <LostRows lost={run.lost} missing={missing} />
-          <UnderTheHood prompt={run.prompt} raw={run.raw} dropped={run.dropped} />
+          <RunTranscript prompt={run.prompt} raw={run.raw} dropped={run.dropped} />
         </>
       )}
     </div>
@@ -569,16 +639,16 @@ function KeyLegend({ target }) {
         <kbd>J</kbd> <kbd>K</kbd> next / previous
       </span>
       <span>
-        <kbd>1</kbd> 👍
+        <kbd>1</kbd> good
       </span>
       <span>
-        <kbd>2</kbd> 👎
+        <kbd>2</kbd> bad
       </span>
       <span>
-        <kbd>3</kbd> ✏️
+        <kbd>3</kbd> fix
       </span>
       <span>
-        <kbd>S</kbd> ⭐
+        <kbd>S</kbd> example
       </span>
       <span>
         <kbd>Enter</kbd> save
@@ -595,6 +665,7 @@ function KeyLegend({ target }) {
 }
 
 function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePending }) {
+  const { avoid } = useBorgs();
   const [mode, setMode] = useState("single");
   const [theme, setTheme] = useState("");
   const [picks, setPicks] = useState([null, null]);
@@ -633,13 +704,13 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
     if (!cookNext || mode !== "single" || next || shown?.status !== "ready") return;
     const id = ++seq.current;
     const settle = (update) => setNext((job) => (job?.id !== id ? job : job.dropped ? null : { ...job, ...update }));
-    const promise = api.generateBatch({ promptId: shown.promptId, theme: shown.theme, topic: null });
+    const promise = api.generateBatch({ promptId: shown.promptId, theme: shown.theme, topic: null, avoid });
     promise.then(
       (result) => settle({ status: "ready", result }),
       (failure) => settle({ status: "error", error: failure.message })
     );
     setNext({ id, promptId: shown.promptId, theme: shown.theme, startedAt: Date.now(), promise, status: "loading" });
-  }, [cookNext, mode, next, shown]);
+  }, [cookNext, mode, next, shown, avoid]);
 
   // One batch at a time: the model server is slow and serial, so two at once would only make both
   // time out. With a blank theme, B reuses A's random topic so the two versions face the same task.
@@ -683,7 +754,7 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
       try {
         const result = adopted
           ? adopted.result ?? (await adopted.promise)
-          : await api.generateBatch({ promptId: pickFor(i), theme: used, topic });
+          : await api.generateBatch({ promptId: pickFor(i), theme: used, topic, avoid });
         topic = topic ?? result.topic;
         setRun(i, id, {
           status: "ready",
@@ -911,6 +982,71 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
 
 /* ---------- prompt versions ---------- */
 
+/** Good, bad and fixed as one stacked bar, so versions compare at a glance. */
+function RatingBar({ ratings }) {
+  const total = ratedTotal(ratings);
+  return (
+    <div className="studio-rating">
+      <div className="studio-rating-bar" aria-hidden="true">
+        {total > 0 &&
+          Object.keys(VERDICTS).map(
+            (key) => ratings[key] > 0 && <span key={key} className={`is-${key}`} style={{ flexGrow: ratings[key] }} />
+          )}
+      </div>
+      <p>
+        {fmt(ratings.good)} good · {fmt(ratings.bad)} bad · {fmt(ratings.fixed)} fixed
+      </p>
+    </div>
+  );
+}
+
+/** A share of rated names: the percentage over what it counts, or "unrated". */
+function Share({ part, total, unit = "", big = false }) {
+  return (
+    <span className={`studio-share${big ? " is-big" : ""}${total ? "" : " is-zero"}`}>
+      <b>{total ? fmtPct(ratio(part, total)) : "–"}</b>
+      <span>{total ? `of ${fmt(total)}${unit}` : "unrated"}</span>
+    </span>
+  );
+}
+
+const VERSION_STAT_COLUMNS = [
+  ["version", (p) => p.version],
+  ["label", (p) => p.label ?? ""],
+  ["live", (p) => (p.is_live ? "yes" : "no")],
+  ["saved_at", (p) => p.created_at],
+  ["temperature", (p) => p.temperature],
+  ["format_examples", (p) => p.example_count],
+  ["rated", (p) => ratedTotal(p.ratings)],
+  ["good", (p) => p.ratings.good],
+  ["bad", (p) => p.ratings.bad],
+  ["fixed", (p) => p.ratings.fixed],
+  ["good_share", (p) => ratio(p.ratings.good, ratedTotal(p.ratings))],
+  ["ai_rated", (p) => p.ratings.model_rated ?? 0],
+  ["ai_good", (p) => p.ratings.model_good ?? 0],
+  ["ai_good_share", (p) => ratio(p.ratings.model_good ?? 0, p.ratings.model_rated ?? 0)],
+  ["system_prompt", (p) => p.system_prompt],
+];
+
+/** A CSV field: shares to 4 decimals, blank when nothing was rated, quoted when it needs to be. */
+function csvField(value) {
+  if (value == null) return "";
+  const text = typeof value === "number" && !Number.isInteger(value) ? String(Number(value.toFixed(4))) : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+/**
+ * Saves one row of statistics per version as CSV, newest first. The byte-order mark makes Excel
+ * read it as UTF-8.
+ */
+function exportVersionStats(prompts, filename) {
+  const lines = [
+    VERSION_STAT_COLUMNS.map(([name]) => name).join(","),
+    ...prompts.map((prompt) => VERSION_STAT_COLUMNS.map(([, value]) => csvField(value(prompt))).join(",")),
+  ];
+  download(filename, `\ufeff${lines.join("\r\n")}\r\n`, "text/csv;charset=utf-8");
+}
+
 function VersionsPanel({ prompts, onEdit, onMakeLive, livePending }) {
   const rows = [...prompts].reverse();
   const live = prompts.find((p) => p.is_live);
@@ -920,9 +1056,24 @@ function VersionsPanel({ prompts, onEdit, onMakeLive, livePending }) {
       title="Prompt versions"
       aside={
         prompts.length > 0 && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onEdit(live ?? rows[0])}>
-            New version
-          </button>
+          <div className="dash-controls">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              title="Download every version's statistics as CSV"
+              onClick={() => exportVersionStats(rows, `borg-prompt-versions-${stampToday()}.csv`)}
+            >
+              Export all
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              title="Versions never change once saved, so every rating points at the exact prompt that made the name"
+              onClick={() => onEdit(live ?? rows[0])}
+            >
+              New version
+            </button>
+          </div>
         )
       }
     >
@@ -936,14 +1087,15 @@ function VersionsPanel({ prompts, onEdit, onMakeLive, livePending }) {
                 <th scope="col">Version</th>
                 <th scope="col">Temp</th>
                 <th scope="col">Format ex.</th>
-                <th scope="col">👍</th>
-                <th scope="col">👎</th>
-                <th scope="col">✏️</th>
-                <th scope="col">Good</th>
-                <th scope="col" title="👍 share of rated names the model made itself; code swaps don't count">
+                <th scope="col" className="is-left">
+                  Ratings
+                </th>
+                <th scope="col" title="Share of every rated name marked good">
+                  Good
+                </th>
+                <th scope="col" title="Good share of rated names the model made itself; code swaps don't count">
                   AI good
                 </th>
-                <th scope="col">Saved</th>
                 <th scope="col" aria-label="Actions" />
               </tr>
             </thead>
@@ -953,26 +1105,40 @@ function VersionsPanel({ prompts, onEdit, onMakeLive, livePending }) {
                 return (
                   <tr key={prompt.id} className={prompt.is_live ? "is-live" : ""}>
                     <th scope="row">
-                      <span className="studio-version">
+                      <p className="studio-version">
                         <b>{versionName(prompt)}</b>
                         {prompt.is_live && <span className="studio-live">Live</span>}
                         {prompt.label && <span className="studio-version-label">{prompt.label}</span>}
-                      </span>
+                      </p>
+                      <p className="studio-version-saved">
+                        saved <Ago iso={prompt.created_at} />
+                      </p>
                     </th>
                     <td>{fmtDec(prompt.temperature, 2)}</td>
                     <td>{prompt.example_count}</td>
-                    <td className={r.good ? "" : "is-zero"}>{fmt(r.good)}</td>
-                    <td className={r.bad ? "" : "is-zero"}>{fmt(r.bad)}</td>
-                    <td className={r.fixed ? "" : "is-zero"}>{fmt(r.fixed)}</td>
-                    <td>{fmtPct(ratio(r.good, ratedTotal(r)))}</td>
-                    <td className="is-strong">{fmtPct(ratio(r.model_good ?? 0, r.model_rated ?? 0))}</td>
+                    <td className="is-left">
+                      <RatingBar ratings={r} />
+                    </td>
                     <td>
-                      <Ago iso={prompt.created_at} />
+                      <Share part={r.good} total={ratedTotal(r)} />
+                    </td>
+                    <td>
+                      <Share part={r.model_good ?? 0} total={r.model_rated ?? 0} unit=" AI" big />
                     </td>
                     <td>
                       <span className="studio-row-actions">
                         <button type="button" className="studio-link" onClick={() => onEdit(prompt)}>
                           Edit as new
+                        </button>
+                        <button
+                          type="button"
+                          className="studio-link"
+                          title={`Download ${versionName(prompt)}'s statistics as CSV`}
+                          onClick={() =>
+                            exportVersionStats([prompt], `borg-prompt-${versionName(prompt)}-${stampToday()}.csv`)
+                          }
+                        >
+                          Export
                         </button>
                         {!prompt.is_live && (
                           <button
@@ -993,11 +1159,6 @@ function VersionsPanel({ prompts, onEdit, onMakeLive, livePending }) {
           </table>
         </div>
       )}
-      <p className="dash-note">
-        Versions never change once saved, so every rating points at the exact prompt that made the name.
-        Good = 👍 share of all rated names. AI good leaves out code swaps, so it measures the prompt
-        itself.
-      </p>
     </Panel>
   );
 }
@@ -1022,7 +1183,7 @@ function PromptEditor({ draft, base, onSave, onCancel }) {
     !(Number.isInteger(exampleCount) && exampleCount >= 0 && exampleCount <= MAX_EXAMPLE_COUNT);
 
   // What the model server will spend on this version, so a long prompt doesn't silently time out.
-  const promptTokens = Math.ceil(values.systemPrompt.length / 4);
+  const promptTokens = tokensIn(values.systemPrompt);
   const exampleTokens = (Number.isFinite(exampleCount) ? exampleCount : 0) * TOKENS_PER_EXAMPLE;
   const readTokens = promptTokens + exampleTokens + USER_MESSAGE_TOKENS;
   const estimate = Math.round(readTokens / READ_TOKENS_PER_SECOND + REPLY_SECONDS);
@@ -1136,26 +1297,13 @@ function PromptEditor({ draft, base, onSave, onCancel }) {
 
 /* ---------- example pool ---------- */
 
-/**
- * The hand-typed "Original → BORG name" form. The ref's `fill({ name, original })` puts a name
- * picked from the board in it and moves to the original, which board names often lack.
- */
-const AddExample = forwardRef(function AddExample({ onAdd }, ref) {
+/** The hand-typed "Original → BORG name" form, for a name that isn't on the board. */
+function AddExample({ onAdd }) {
   const [original, setOriginal] = useState("");
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const originalRef = useRef(null);
   const ready = original.trim() && api.FUSED_BORG.test(name);
-
-  useImperativeHandle(ref, () => ({
-    fill(pick) {
-      setName(pick.name);
-      setOriginal(pick.original ?? "");
-      setError(null);
-      originalRef.current?.focus();
-    },
-  }));
 
   const submit = async (event) => {
     event.preventDefault();
@@ -1175,7 +1323,6 @@ const AddExample = forwardRef(function AddExample({ onAdd }, ref) {
   return (
     <form className="studio-add-example" onSubmit={submit}>
       <input
-        ref={originalRef}
         className="studio-input"
         type="text"
         value={original}
@@ -1204,25 +1351,54 @@ const AddExample = forwardRef(function AddExample({ onAdd }, ref) {
       )}
     </form>
   );
-});
+}
 
 const BOARD_SOURCES = {
-  ai: ["AI", "A BORG AI name rated 👍 or ✏️ fixed in the Studio, with the original it riffs on"],
+  ai: ["AI", "A BORG AI name rated good or fixed in the Studio, with the original it riffs on"],
   member: ["Member", "Sent in by a member and approved; members only send the name"],
   classic: ["Classic", "One of the site's own names"],
 };
 /** Board names listed at once; searching narrows the rest down. */
 const BOARD_SHOWN = 40;
+/** Pool entries listed before "Show all". */
+const POOL_SHOWN = 8;
+const POOL_FILTERS = { all: "examples", on: "switched on", off: "switched off" };
 
 /**
- * Names already on the board that aren't in the example pool. One with a known original goes
- * straight in; one without fills the form so only the original needs typing.
+ * Covers the example pool with the names already on the board that aren't in it. Tick one or
+ * many and add them in one go; a name without a known original gets a field for it. A name
+ * that isn't on the board can be typed in at the bottom.
  */
-function BoardPicker({ board, error, exampleKeys, onAdd, onFill }) {
+function PoolAdder({ id, board, error, exampleKeys, onAdd, onClose }) {
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("all");
-  const [pending, setPending] = useState([]);
-  const [addError, setAddError] = useState(null);
+  // Ticked names by key, each with the original it goes in with.
+  const [picked, setPicked] = useState(() => new Map());
+  const [saving, setSaving] = useState(false);
+  const [failures, setFailures] = useState([]);
+  const searchRef = useRef(null);
+  const rootRef = useRef(null);
+  const onEscape = useRef(null);
+
+  useEffect(() => {
+    searchRef.current?.focus();
+  }, []);
+
+  // Esc closes from inside the overlay, or with focus dropped to the page (a button that just went
+  // disabled lets go of it); a key already handled, say by an open rating form, is left alone.
+  onEscape.current = (event) => {
+    if (event.key !== "Escape" || event.defaultPrevented || saving) return;
+    if (event.target !== document.body && !rootRef.current?.contains(event.target)) return;
+    event.preventDefault();
+    onClose();
+  };
+
+  useEffect(() => {
+    const listener = (event) => onEscape.current(event);
+    document.addEventListener("keydown", listener);
+    return () => document.removeEventListener("keydown", listener);
+  }, []);
+
   const open = board.filter((row) => !exampleKeys.has(row.key));
   const needle = query.trim().toLowerCase();
   const matches = open.filter(
@@ -1232,26 +1408,52 @@ function BoardPicker({ board, error, exampleKeys, onAdd, onFill }) {
   );
   const shown = matches.slice(0, BOARD_SHOWN);
   const count = (key) => open.filter((row) => row.source === key).length;
+  // Names that made it into the pool drop out of `open`, so they drop out of the ticked ones too.
+  const chosen = open.filter((row) => picked.has(row.key));
+  const missing = chosen.filter((row) => !picked.get(row.key).trim()).length;
 
-  const pick = async (row) => {
-    setAddError(null);
-    if (!row.original) {
-      onFill(row);
-      return;
+  const toggle = (row) =>
+    setPicked((current) => {
+      const next = new Map(current);
+      if (next.has(row.key)) next.delete(row.key);
+      else next.set(row.key, row.original ?? "");
+      return next;
+    });
+
+  const setOriginal = (key, value) => setPicked((current) => new Map(current).set(key, value));
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!chosen.length || missing || saving) return;
+    setSaving(true);
+    setFailures([]);
+    const failed = [];
+    for (const row of chosen) {
+      try {
+        await onAdd({ original: picked.get(row.key).trim(), name: row.name });
+      } catch (failure) {
+        failed.push(`Couldn't add ${row.name}: ${failure.message}`);
+      }
     }
-    setPending((current) => [...current, row.key]);
-    try {
-      await onAdd({ original: row.original, name: row.name });
-    } catch (failure) {
-      setAddError(`Couldn't add ${row.name}: ${failure.message}`);
-    }
-    setPending((current) => current.filter((key) => key !== row.key));
+    setSaving(false);
+    if (failed.length) setFailures(failed);
+    else onClose();
   };
 
   return (
-    <section className="studio-board" aria-label="Quick add from the board">
-      <div className="studio-board-head">
+    <div ref={rootRef} id={id} className="studio-adder" role="dialog" aria-labelledby={`${id}-title`}>
+      <header className="dash-panel-head">
+        <div>
+          <h3 id={`${id}-title`} className="dash-panel-title">
+            Add to the pool
+          </h3>
+          <p className="dash-panel-sub">Tick one or more names already on the board</p>
+        </div>
+        <button type="button" className="studio-plus is-close" aria-label="Close" onClick={onClose} disabled={saving} />
+      </header>
+      <div className="studio-adder-filters">
         <input
+          ref={searchRef}
           className="studio-input"
           type="search"
           value={query}
@@ -1272,62 +1474,110 @@ function BoardPicker({ board, error, exampleKeys, onAdd, onFill }) {
       </div>
       {error && (
         <p className="studio-row-error" role="alert">
-          Couldn't load member and AI names ({error}). Showing the classics.
+          Couldn't load the board ({error}). Some names may be missing.
         </p>
       )}
-      {addError && (
-        <p className="studio-row-error" role="alert">
-          {addError}
+      <div className="studio-adder-scroll">
+        <form id={`${id}-picks`} onSubmit={submit}>
+          {shown.length === 0 ? (
+            <p className="studio-adder-note">
+              {open.length ? "No board names match." : "Every board name is already in the pool."}
+            </p>
+          ) : (
+            <ol className="studio-adder-list">
+              {shown.map((row) => {
+                const [label, title] = BOARD_SOURCES[row.source];
+                const ticked = picked.has(row.key);
+                return (
+                  <li key={row.key} className={`studio-pick${ticked ? " is-picked" : ""}`}>
+                    <label className="studio-pick-row">
+                      <input
+                        type="checkbox"
+                        className="studio-check"
+                        checked={ticked}
+                        disabled={saving}
+                        onChange={() => toggle(row)}
+                      />
+                      <span className="studio-pick-main">
+                        <span className="dash-row-name">{row.name}</span>
+                        <span className="dash-row-meta">
+                          <span className={row.original ? "" : "is-guest"}>{row.original ?? "No original yet"}</span>
+                          <span className={`studio-source is-board-${row.source}`} title={title}>
+                            {label}
+                          </span>
+                        </span>
+                      </span>
+                    </label>
+                    {ticked && !row.original && (
+                      <input
+                        className="studio-input studio-pick-original"
+                        type="text"
+                        value={picked.get(row.key)}
+                        maxLength={80}
+                        placeholder={`What ${row.name} riffs on`}
+                        aria-label={`Original for ${row.name}`}
+                        disabled={saving}
+                        onChange={(event) => setOriginal(row.key, event.target.value)}
+                      />
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {matches.length > shown.length && (
+            <p className="studio-adder-note">{fmt(matches.length - shown.length)} more: search to narrow them down.</p>
+          )}
+        </form>
+        <section className="studio-adder-typed" aria-label="Type a name that isn't on the board">
+          <p className="studio-adder-note">Not on the board? Type it in.</p>
+          <AddExample onAdd={onAdd} />
+        </section>
+      </div>
+      {failures.map((failure) => (
+        <p key={failure} className="studio-row-error" role="alert">
+          {failure}
         </p>
-      )}
-      {shown.length === 0 ? (
-        <p className="studio-board-note">
-          {open.length ? "No board names match." : "Every board name is already in the pool."}
+      ))}
+      <footer className="studio-adder-foot">
+        <p className="dash-note">
+          <b>{fmt(chosen.length)}</b> ticked
+          {missing > 0 && ` · ${plural(missing, "needs its original", "need their originals")}`}
         </p>
-      ) : (
-        <ol className="dash-list studio-board-list">
-          {shown.map((row) => {
-            const [label, title] = BOARD_SOURCES[row.source];
-            return (
-              <li key={row.key} className="dash-row">
-                <div className="dash-row-main">
-                  <p className="dash-row-name">{row.name}</p>
-                  <p className="dash-row-meta">
-                    <span className={row.original ? "" : "is-guest"}>{row.original ?? "No original yet"}</span>
-                    <span className={`studio-source is-board-${row.source}`} title={title}>
-                      {label}
-                    </span>
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className={`studio-link${row.original ? " is-strong" : ""}`}
-                  disabled={pending.includes(row.key)}
-                  title={row.original ? "Add to the example pool" : "Put it in the form above and type its original"}
-                  onClick={() => pick(row)}
-                >
-                  {row.original ? "⭐ Add" : "Fill in"}
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {matches.length > shown.length && (
-        <p className="studio-board-note">
-          {fmt(matches.length - shown.length)} more: search to narrow them down.
-        </p>
-      )}
-    </section>
+        {chosen.length > 0 && (
+          <button type="button" className="studio-link" disabled={saving} onClick={() => setPicked(new Map())}>
+            Clear
+          </button>
+        )}
+        <button
+          type="submit"
+          form={`${id}-picks`}
+          className="btn btn-acid btn-sm"
+          disabled={!chosen.length || missing > 0 || saving}
+        >
+          {saving ? "Adding…" : chosen.length > 1 ? `Add ${fmt(chosen.length)} to the pool` : "Add to the pool"}
+        </button>
+      </footer>
+    </div>
   );
 }
 
-function ExamplePool({ examples, exampleKeys, board, boardError, live, onToggle, onAdd }) {
-  const formRef = useRef(null);
-  const [filter, setFilter] = useState("all");
+function ExamplePool({ examples, exampleKeys, board, boardError, onToggle, onAdd }) {
+  const plusRef = useRef(null);
+  const wasAdding = useRef(false);
+  const [filter, setFilter] = useState("on");
+  const [adding, setAdding] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [pending, setPending] = useState([]);
   const on = examples.filter((e) => e.enabled).length;
   const rows = examples.filter((e) => (filter === "all" ? true : filter === "on" ? e.enabled : !e.enabled));
+  const shown = showAll ? rows : rows.slice(0, POOL_SHOWN);
+
+  // Closing the overlay hands focus back to the + that opened it.
+  useEffect(() => {
+    if (!adding && wasAdding.current) plusRef.current?.focus();
+    wasAdding.current = adding;
+  }, [adding]);
 
   const toggle = async (example) => {
     setPending((current) => [...current, example.id]);
@@ -1337,9 +1587,21 @@ function ExamplePool({ examples, exampleKeys, board, boardError, live, onToggle,
 
   return (
     <Panel
-      className="dash-span-side"
+      className={`dash-span-side studio-pool-panel${adding ? " is-adding" : ""}`}
       title={`Example pool (${fmt(on)})`}
       aside={
+        <button
+          ref={plusRef}
+          type="button"
+          className="studio-plus"
+          aria-label="Add names to the example pool"
+          aria-expanded={adding}
+          aria-controls="studio-pool-adder"
+          onClick={() => setAdding(true)}
+        />
+      }
+    >
+      <div className="studio-pool-body">
         <Seg
           label="Filter examples"
           value={filter}
@@ -1350,44 +1612,57 @@ function ExamplePool({ examples, exampleKeys, board, boardError, live, onToggle,
             { key: "off", label: "Off" },
           ]}
         />
-      }
-    >
-      <AddExample ref={formRef} onAdd={onAdd} />
-      <BoardPicker
-        board={board}
-        error={boardError}
-        exampleKeys={exampleKeys}
-        onAdd={onAdd}
-        onFill={(row) => formRef.current?.fill(row)}
-      />
-      {rows.length === 0 ? (
-        <Empty>{examples.length ? "Nothing in this filter." : "No examples yet. ⭐ a name or add one above."}</Empty>
-      ) : (
-        <ol className="dash-list studio-pool">
-          {rows.map((example) => (
-            <li key={example.id} className={`dash-row${example.enabled ? "" : " is-off"}`}>
-              <button
-                type="button"
-                role="switch"
-                className="studio-switch"
-                aria-checked={example.enabled}
-                aria-label={`Use ${example.name} as an example`}
-                disabled={pending.includes(example.id)}
-                onClick={() => toggle(example)}
-              />
-              <div className="dash-row-main">
-                <p className="dash-row-name">{example.name}</p>
-                <p className="dash-row-meta">
-                  {example.original}
-                  {example.source ? ` · ${example.source}` : ""}
-                </p>
-              </div>
-              <span className="dash-row-time">
-                <Ago iso={example.created_at} />
-              </span>
-            </li>
-          ))}
-        </ol>
+        {rows.length === 0 ? (
+          <Empty>{examples.length ? "Nothing in this filter." : "No examples yet. Star a name or add some with +."}</Empty>
+        ) : (
+          <>
+            <ol className="dash-list studio-pool">
+              {shown.map((example) => (
+                <li key={example.id} className={`dash-row${example.enabled ? "" : " is-off"}`}>
+                  <button
+                    type="button"
+                    role="switch"
+                    className="studio-switch"
+                    aria-checked={example.enabled}
+                    aria-label={`Use ${example.name} as an example`}
+                    disabled={pending.includes(example.id)}
+                    onClick={() => toggle(example)}
+                  />
+                  <div className="dash-row-main">
+                    <p className="dash-row-name">{example.name}</p>
+                    <p className="dash-row-meta">
+                      {example.original}
+                      {example.source ? ` · ${example.source}` : ""}
+                    </p>
+                  </div>
+                  <span className="dash-row-time">
+                    <Ago iso={example.created_at} />
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="studio-pool-foot">
+              {shown.length < rows.length
+                ? `Showing ${fmt(shown.length)} of ${fmt(rows.length)} ${POOL_FILTERS[filter]}.`
+                : `Showing all ${fmt(rows.length)} ${POOL_FILTERS[filter]}.`}
+              {rows.length > POOL_SHOWN && (
+                <button type="button" className="studio-link" onClick={() => setShowAll(!showAll)}>
+                  {showAll ? "Show fewer" : "Show all"}
+                </button>
+              )}
+            </p>
+          </>
+        )}
+      </div>
+      {adding && (
+        <PoolAdder
+          id="studio-pool-adder"
+          board={board}
+          error={boardError}
+          exampleKeys={exampleKeys}
+          onAdd={onAdd}
+          onClose={() => setAdding(false)}
+        />
       )}
     </Panel>
   );
@@ -1395,13 +1670,18 @@ function ExamplePool({ examples, exampleKeys, board, boardError, live, onToggle,
 
 /* ---------- ratings log ---------- */
 
+/** Ratings listed before "Show the other N". */
+const RATINGS_SHOWN = 12;
+
 function RatingsLog({ ratings, prompts }) {
   const [verdict, setVerdict] = useState("all");
   const [promptId, setPromptId] = useState("all");
+  const [showAll, setShowAll] = useState(false);
   const byId = useMemo(() => new Map(prompts.map((p) => [String(p.id), p])), [prompts]);
   const rows = ratings.filter(
     (r) => (verdict === "all" || r.verdict === verdict) && (promptId === "all" || String(r.prompt_id) === promptId)
   );
+  const shown = showAll ? rows : rows.slice(0, RATINGS_SHOWN);
 
   return (
     <Panel
@@ -1427,7 +1707,7 @@ function RatingsLog({ ratings, prompts }) {
             onChange={setVerdict}
             options={[
               { key: "all", label: "All" },
-              ...Object.entries(VERDICTS).map(([key, v]) => ({ key, label: v.icon })),
+              ...Object.entries(VERDICTS).map(([key, v]) => ({ key, label: v.label })),
             ]}
           />
         </div>
@@ -1451,7 +1731,7 @@ function RatingsLog({ ratings, prompts }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {shown.map((r) => (
                 <tr key={r.id}>
                   <th scope="row" className="studio-log-name">
                     {r.name}
@@ -1462,12 +1742,10 @@ function RatingsLog({ ratings, prompts }) {
                   </td>
                   <td>{r.original}</td>
                   <td>
-                    <span className={`studio-chip is-${r.verdict}`}>
-                      {VERDICTS[r.verdict]?.icon} {VERDICTS[r.verdict]?.label ?? r.verdict}
-                    </span>
+                    <span className={`studio-chip is-${r.verdict}`}>{VERDICTS[r.verdict]?.label ?? r.verdict}</span>
                   </td>
-                  <td className="studio-log-why">
-                    {r.fixed_name && <b>→ {r.fixed_name}</b>}
+                  <td className={`studio-log-why${r.fixed_name ? " is-fixed" : ""}`}>
+                    {r.fixed_name && `→ ${r.fixed_name}`}
                     {r.fixed_name && r.reason ? " · " : ""}
                     {r.reason}
                     {!r.fixed_name && !r.reason && <span className="is-zero">—</span>}
@@ -1482,6 +1760,13 @@ function RatingsLog({ ratings, prompts }) {
             </tbody>
           </table>
         </div>
+      )}
+      {rows.length > RATINGS_SHOWN && (
+        <p>
+          <button type="button" className="studio-link is-strong" onClick={() => setShowAll(!showAll)}>
+            {showAll ? "Show fewer" : `Show the other ${fmt(rows.length - RATINGS_SHOWN)}`}
+          </button>
+        </p>
       )}
     </Panel>
   );
@@ -1524,15 +1809,15 @@ function MemberFeedback({ rows, exampleKeys, onStar }) {
     <Panel
       className="dash-span-full"
       title="Member feedback"
-      sub={`Live BORG AI names from the last 30 days that members ❤️ or 👎 · liked share: AI ${share("model")} · code ${share("code")}`}
+      sub={`Live BORG AI names from the last 30 days that members liked or disliked · liked share: AI ${share("model")} · code ${share("code")}`}
       aside={
         <Seg
           label="Sort feedback"
           value={order}
           onChange={setOrder}
           options={[
-            { key: "disliked", label: "Most 👎" },
-            { key: "liked", label: "Most ❤️" },
+            { key: "disliked", label: "Most disliked" },
+            { key: "liked", label: "Most liked" },
           ]}
         />
       }
@@ -1552,8 +1837,8 @@ function MemberFeedback({ rows, exampleKeys, onStar }) {
                 <th scope="col">Name</th>
                 <th scope="col">Made by</th>
                 <th scope="col">Original</th>
-                <th scope="col">❤️</th>
-                <th scope="col">👎</th>
+                <th scope="col">Likes</th>
+                <th scope="col">Dislikes</th>
                 <th scope="col">Rolls</th>
                 <th scope="col">Last rolled</th>
                 <th scope="col" aria-label="Actions" />
@@ -1588,7 +1873,7 @@ function MemberFeedback({ rows, exampleKeys, onStar }) {
                         }
                         onClick={() => star(r)}
                       >
-                        {inPool ? "In pool" : "⭐ Example"}
+                        {inPool ? "In pool" : "Make example"}
                       </button>
                     </td>
                   </tr>
@@ -1604,17 +1889,10 @@ function MemberFeedback({ rows, exampleKeys, onStar }) {
 
 /* ---------- fine-tuning data ---------- */
 
-function download(filename, lines) {
-  const url = URL.createObjectURL(new Blob([`${lines.join("\n")}\n`], { type: "application/jsonl" }));
-  const link = Object.assign(document.createElement("a"), { href: url, download: filename });
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 const ORIGINS = [
-  ["fixed", "✏️ fixed"],
-  ["good", "👍 rated"],
-  ["liked", "❤️ by members"],
+  ["fixed", "fixed"],
+  ["good", "rated good"],
+  ["liked", "liked by members"],
   ["example", "example pool"],
 ];
 
@@ -1645,7 +1923,8 @@ function TrainingData({ prompt }) {
   };
 
   const { status, files, error } = state;
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = stampToday();
+  const saveJsonl = (filename, lines) => download(filename, `${lines.join("\n")}\n`, "application/jsonl");
   const count = files?.pairs.length ?? 0;
 
   return (
@@ -1653,12 +1932,12 @@ function TrainingData({ prompt }) {
       className="dash-span-full"
       title="Fine-tuning data"
       sub={`Everything rated so far as training files, with ${versionLabel(prompt)} as the system prompt · training runs offline, see training/README.md`}
-      aside={
+    >
+      <p>
         <button type="button" className="btn btn-ghost btn-sm" onClick={build} disabled={status === "loading"}>
           {status === "loading" ? "Building…" : files ? "Rebuild" : "Build training files"}
         </button>
-      }
-    >
+      </p>
       {error && (
         <p className="dash-banner is-error" role="alert">
           Couldn't read the training data: {error}
@@ -1666,7 +1945,7 @@ function TrainingData({ prompt }) {
       )}
       {!files ? (
         <Empty>
-          Builds from every 👍 and ✏️ rating, live names members liked and the example pool. A LoRA run starts
+          Builds from every good and fixed rating, live names members liked and the example pool. A LoRA run starts
           paying off around {fmt(TRAINING_TARGET)} pairs.
         </Empty>
       ) : (
@@ -1674,7 +1953,7 @@ function TrainingData({ prompt }) {
           <div className="studio-meter" role="img" aria-label={`${count} of ${TRAINING_TARGET} pairs`}>
             <span style={{ width: `${Math.min(100, (count / TRAINING_TARGET) * 100)}%` }} />
           </div>
-          <p className="studio-run-stats">
+          <p className="studio-stats">
             <span>
               <b>{fmt(count)}</b> / {fmt(TRAINING_TARGET)} pairs
             </span>
@@ -1692,7 +1971,7 @@ function TrainingData({ prompt }) {
               type="button"
               className="btn btn-acid btn-sm"
               disabled={!files.sft.length}
-              onClick={() => download(`borg-sft-${stamp}.jsonl`, files.sft)}
+              onClick={() => saveJsonl(`borg-sft-${stamp}.jsonl`, files.sft)}
             >
               Download SFT · {fmt(files.sft.length)} {files.sft.length === 1 ? "chat" : "chats"}
             </button>
@@ -1700,14 +1979,14 @@ function TrainingData({ prompt }) {
               type="button"
               className="btn btn-ghost btn-sm"
               disabled={!files.dpo.length}
-              onClick={() => download(`borg-dpo-${stamp}.jsonl`, files.dpo)}
+              onClick={() => saveJsonl(`borg-dpo-${stamp}.jsonl`, files.dpo)}
             >
               Download DPO · {fmt(files.dpo.length)} {files.dpo.length === 1 ? "pair" : "pairs"}
             </button>
           </div>
           <p className="dash-note">
-            SFT teaches the reply format with your best names, batched by theme like a real roll. DPO teaches each ✏️
-            fix over the name the model wrote. Names whose latest rating is 👎 are left out.
+            SFT teaches the reply format with your best names, batched by theme like a real roll. DPO teaches each fix
+            over the name the model wrote. Names whose latest rating is bad are left out.
             {count < TRAINING_TARGET &&
               ` Under ${fmt(TRAINING_TARGET)} pairs a LoRA mostly memorises these names: keep rating.`}
           </p>
@@ -1720,6 +1999,9 @@ function TrainingData({ prompt }) {
 /* ---------- tab ---------- */
 
 export default function Studio() {
+  const borgs = useBorgs();
+  const reloadBorgs = borgs.reload;
+  const board = useMemo(() => api.boardPool(borgs.rows), [borgs.rows]);
   const [state, setState] = useState({ status: "loading", data: null, error: null });
   const [notice, setNotice] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -1728,6 +2010,7 @@ export default function Studio() {
   const editorRef = useRef(null);
 
   const load = useCallback(async () => {
+    reloadBorgs();
     const id = ++latest.current;
     setState((current) => ({ ...current, status: "loading" }));
     let next;
@@ -1741,7 +2024,7 @@ export default function Studio() {
     setState((current) =>
       error ? { ...current, status: "error", error: error.message } : { status: "ready", data: next, error: null }
     );
-  }, []);
+  }, [reloadBorgs]);
 
   useEffect(() => {
     load();
@@ -1881,9 +2164,8 @@ export default function Studio() {
             <ExamplePool
               examples={data.examples}
               exampleKeys={exampleKeys}
-              board={data.board}
-              boardError={data.boardError}
-              live={live}
+              board={board}
+              boardError={borgs.status === "error" ? borgs.error : null}
               onToggle={toggleExample}
               onAdd={star}
             />

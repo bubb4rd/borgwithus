@@ -1,0 +1,274 @@
+/* Borgs tab. Builds on the dash- panels and table from AdminPage.css and the studio- fields from
+   Studio.css; every class of its own is borgs- prefixed. */
+
+.borgs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.borgs-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- add ---------- */
+
+.borgs-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.borgs-add-featured {
+  min-height: 40px;
+}
+
+/* ---------- filters & bulk ---------- */
+
+.borgs-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.borgs-search {
+  flex: 1 1 16rem;
+  width: auto;
+}
+
+.borgs-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  padding: 0.6rem 0.8rem;
+  border: 1.5px solid var(--acid);
+  border-radius: 14px;
+}
+
+.borgs-bulk-count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.borgs-bulk-count b {
+  color: var(--acid);
+}
+
+.borgs-bulk-count span {
+  color: var(--paper-dim);
+}
+
+.borgs-bulk-category {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.borgs-bulk-category .studio-input {
+  width: 12rem;
+}
+
+.borgs-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+/* ---------- table ---------- */
+
+/* Doubled class: AdminPage.css loads after this file and right-aligns .dash-table cells. */
+.dash-table.borgs-table th,
+.dash-table.borgs-table td {
+  text-align: left;
+  vertical-align: middle;
+}
+
+.dash-table.borgs-table .borgs-num {
+  text-align: right;
+}
+
+.dash-table.borgs-table .borgs-center {
+  text-align: center;
+}
+
+.dash-table.borgs-table .borgs-check-cell {
+  width: 2rem;
+  padding-left: 0;
+}
+
+.borgs-sort {
+  display: inline-flex;
+  gap: 0.25rem;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+.borgs-sort:hover,
+.borgs-sort.is-active {
+  color: var(--paper);
+}
+
+.borgs-sort span {
+  min-width: 0.6em;
+}
+
+.borgs-row:hover {
+  background: rgba(243, 238, 226, 0.04);
+}
+
+.borgs-row.is-ticked {
+  background: rgba(214, 255, 61, 0.06);
+}
+
+.borgs-row.is-editing {
+  background: rgba(243, 238, 226, 0.06);
+}
+
+.borgs-row.is-editing td {
+  padding-block: 0.6rem;
+}
+
+.borgs-row.is-editing .studio-input {
+  min-width: 9rem;
+  min-height: 34px;
+}
+
+.borgs-name-cell {
+  white-space: normal;
+}
+
+.borgs-name {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--paper);
+  white-space: nowrap;
+}
+
+.borgs-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: var(--dash-mono-xs);
+  color: var(--paper-dim);
+  white-space: nowrap;
+}
+
+.borgs-blank {
+  color: rgba(243, 238, 226, 0.3);
+}
+
+.borgs-source {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+
+.borgs-source.is-member { border-color: var(--dash-members); color: var(--dash-members); }
+.borgs-source.is-ai { border-color: var(--acid); color: var(--acid); }
+
+.borgs-category {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(243, 238, 226, 0.08);
+  color: var(--paper);
+}
+
+.borgs-star {
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--paper-dim);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.borgs-star:hover:not(:disabled) {
+  color: var(--paper);
+  transform: scale(1.15);
+}
+
+.borgs-star.is-on {
+  color: var(--dash-members);
+}
+
+.borgs-star:disabled {
+  opacity: 0.5;
+}
+
+.borgs-dislikes {
+  color: var(--dash-down);
+}
+
+.borgs-actions {
+  width: 1%;
+}
+
+.borgs-actions .btn-sm {
+  min-height: 30px;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+}
+
+.borgs-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.borgs-delete:hover {
+  border-color: var(--dash-down);
+  background: var(--dash-down);
+  color: var(--ink);
+}
+
+.borgs-row-note td {
+  white-space: normal;
+}
+
+.borgs-row-note .dash-empty {
+  text-align: left;
+}
+
+.borgs-link {
+  font: inherit;
+  color: var(--acid);
+  text-decoration: underline;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 960px) {
+  .borgs-add-form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .borgs-bulk-actions {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .borgs-add-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .borgs-bulk-category .studio-input {
+    width: 100%;
+  }
+}

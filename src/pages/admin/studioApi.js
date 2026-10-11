@@ -1,4 +1,3 @@
-import data from "../../data.json";
 import { supabase } from "../../lib/supabase";
 
 // AI Borg Studio data. Like the dashboard, everything goes through admin-only functions
@@ -20,10 +19,8 @@ import { supabase } from "../../lib/supabase";
 //                                    original, source, likes, dislikes }], examples: [{ original,
 //                                    name }] }   fine-tuning sources, built into files by
 //     trainingData.js (supabase/migrations/20261016000000_borg_ai_training.sql)
-//   get_borg_board_pool() -> [{ name, original, source: "ai" | "member" }]   Studio-approved AI names
-//                            (with their original) and approved member names (original null),
-//                            quick-added to the example pool alongside the classics in data.json
-//     (supabase/migrations/20261017000000_borg_board_pool.sql)
+// The board pool (names already on the board, for the example pool's quick add) is public.borgs,
+// shared through BorgsContext (supabase/migrations/20261018000000_borg_catalog.sql).
 //   save_borg_prompt(p_label, p_system_prompt, p_temperature, p_example_count) -> prompt
 //     Versions are immutable so every rating stays tied to the exact prompt that made the name;
 //     editing saves the next version.
@@ -54,16 +51,11 @@ async function rpc(name, args) {
   return result;
 }
 
-// Member feedback and the board pool are their own calls so a failure there doesn't take the rest
-// of the Studio down.
+// Member feedback is its own call so a failure there doesn't take the rest of the Studio down.
 export async function fetchStudio() {
-  const [result, feedback, board] = await Promise.all([
+  const [result, feedback] = await Promise.all([
     rpc("get_borg_studio"),
     rpc("get_borg_ai_feedback").then(
-      (rows) => ({ rows: rows ?? [], error: null }),
-      (failure) => ({ rows: [], error: failure.message })
-    ),
-    rpc("get_borg_board_pool").then(
       (rows) => ({ rows: rows ?? [], error: null }),
       (failure) => ({ rows: [], error: failure.message })
     ),
@@ -74,8 +66,6 @@ export async function fetchStudio() {
     ratings: result?.ratings ?? [],
     feedback: feedback.rows,
     feedbackError: feedback.error,
-    board: boardPool(board.rows),
-    boardError: board.error,
   };
 }
 
@@ -83,14 +73,12 @@ export async function fetchStudio() {
 export const FUSED_BORG = /\w+borg|borg\w+/i;
 
 /**
- * Every name on the board an example can be made from, one per name: Studio-approved AI names
- * (which know their original), approved member names, then the site's classics. Names without
- * "borg" fused into a word can't be examples, so they're left out.
+ * Every name on the board an example can be made from (BorgsContext rows), one per name. Names
+ * without "borg" fused into a word can't be examples, so they're left out.
  */
-function boardPool(rows) {
-  const classics = data.borgs.map((name) => ({ name, original: null, source: "classic" }));
+export function boardPool(rows) {
   const pool = new Map();
-  for (const row of [...rows, ...classics]) {
+  for (const row of rows) {
     const key = nameKey(row.name);
     if (key && FUSED_BORG.test(row.name) && !pool.has(key)) pool.set(key, { ...row, key });
   }
@@ -130,9 +118,10 @@ export const rateName = ({ id, promptId, theme, original, name, source, verdict,
     p_fixed_name: fixedName || null,
   });
 
-export async function generateBatch({ promptId, theme, topic }) {
+/** `avoid`: the site's own names (BorgsContext), like a member roll. */
+export async function generateBatch({ promptId, theme, topic, avoid }) {
   const { data: payload, error } = await supabase.functions.invoke("borg-ai-studio", {
-    body: { promptId, theme, topic, avoid: data.borgs },
+    body: { promptId, theme, topic, avoid },
   });
   // Non-2xx responses still carry { error } in the body.
   const body = error ? await error.context?.json?.().catch(() => null) : payload;

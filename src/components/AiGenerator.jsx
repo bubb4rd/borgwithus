@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import data from "../data.json";
+import { useBorgs } from "../context/BorgsContext";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import BetaTag from "./BetaTag";
@@ -48,6 +48,7 @@ function LockedPanel() {
 }
 
 function GeneratorPanel({ userId }) {
+  const { avoid } = useBorgs();
   const [theme, setTheme] = useState("");
   const [result, setResult] = useState(null);
   const [credits, setCredits] = useState(null);
@@ -75,7 +76,7 @@ function GeneratorPanel({ userId }) {
 
     const { data: payload, error: invokeError } = await supabase.functions.invoke(
       "generate-borg-name",
-      { body: { prompt: theme.trim(), avoid: data.borgs } }
+      { body: { prompt: theme.trim(), avoid } }
     );
 
     // Non-2xx responses still carry { error, remaining } in the body.
