@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { askModel, buildMessages, type Draft, extractDrafts, pickPair } from "../_shared/borg-ai.ts";
+import { askModel, buildMessages, type Draft, extractDrafts, modelServer, pickPair } from "../_shared/borg-ai.ts";
 import { loadBatchSetup } from "../_shared/borg-setup.ts";
 import { corsHeaders, json } from "../_shared/http.ts";
 
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const modelHost = Deno.env.get("AI_INFERENCE_API_HOST")?.replace(/\/$/, "");
+  const server = modelServer();
 
   const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Log in to use BORG AI." }, 401);
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   // Names that already exist on the site; a new borg must not reuse one.
   const siteNames = Array.isArray(body.avoid) ? body.avoid.slice(0, MAX_AVOID_NAMES) : [];
 
-  if (!modelHost) {
+  if (!server) {
     console.error("AI_INFERENCE_API_HOST is not set");
     return json({ error: "BORG AI is offline right now." }, 503);
   }
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
         usedOriginals: [...repeats.map(({ original }) => original), ...setup.originals],
         attempt,
       });
-      const raw = await askModel(modelHost, MODEL, messages, setup.config.temperature);
+      const raw = await askModel(server, MODEL, messages, setup.config.temperature);
       const batch = pickPair(extractDrafts(raw), setup.avoid);
       if (batch.pair) {
         const { name, original, source } = batch.pair;

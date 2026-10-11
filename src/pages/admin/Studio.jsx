@@ -343,16 +343,15 @@ function Elapsed({ since }) {
   return <>{Math.max(0, Math.round((now - since) / 1000))} s</>;
 }
 
-/** What the batch turned into: originals the model picked, and who made the names on offer. */
-function RunStats({ run }) {
-  const originals = new Set([...run.pairs, ...run.dropped].map((pair) => api.nameKey(pair.original))).size;
+/** What the batch turned into: originals on offer out of those asked for, and who made the names. */
+function RunStats({ run, kept, missing }) {
   const ai = run.pairs.filter((pair) => pair.source === "model" && pair.swap).length;
   const code = run.pairs.filter((pair) => pair.source === "code").length;
   const tacked = run.pairs.filter((pair) => !pair.swap).length;
   return (
     <p className="studio-run-stats">
       <span>
-        <b>{fmt(originals)}</b> originals
+        <b>{fmt(kept)}</b> of {fmt(api.BATCH_SIZE)} originals
       </span>
       <span className="is-model">
         <b>{fmt(ai)}</b> AI swaps
@@ -363,11 +362,58 @@ function RunStats({ run }) {
       <span className={tacked ? "" : "is-zero"}>
         <b>{fmt(tacked)}</b> tacked on
       </span>
-      <span className={run.dropped.length ? "" : "is-zero"}>
-        <b>{fmt(run.dropped.length)}</b> repeats dropped
+      <span className={run.lost.length ? "is-lost" : "is-zero"}>
+        <b>{fmt(run.lost.length)}</b> thrown out
+      </span>
+      <span className={missing ? "is-lost" : "is-zero"}>
+        <b>{fmt(missing)}</b> missing
       </span>
       {run.ms != null && <span>{fmtDec(run.ms / 1000, 1)} s</span>}
     </p>
+  );
+}
+
+const LOST_REASONS = {
+  "known-original": ["Thrown out", "The original repeats one already on the site or earlier in this batch"],
+  "known-name": ["Thrown out", "Its name repeats a known one, and the code had no fresh swap to offer instead"],
+  "no-name": ["Failed", "The model wrote no usable borg name for it, and the code couldn't swap a sound"],
+};
+
+/**
+ * One row per original asked for that offers no name: the model's originals thrown out or
+ * failed, and a placeholder for each line the model never wrote, so a short batch says why.
+ */
+function LostRows({ lost, missing }) {
+  if (!lost.length && !missing) return null;
+  return (
+    <ul className="studio-results studio-lost" aria-label="Originals with no name on offer">
+      {lost.map((draft, n) => {
+        const [label, why] = LOST_REASONS[draft.reason] ?? ["Thrown out", "Dropped by the batch rules"];
+        return (
+          <li key={`lost-${n}`} className="studio-result is-lost">
+            <div className="studio-result-main">
+              <p className="studio-original">
+                {draft.original} <span className="studio-source is-lost">{label}</span>
+              </p>
+              {draft.name && <p className="studio-name is-struck">{draft.name}</p>}
+              <p className="studio-reason">{why}</p>
+            </div>
+          </li>
+        );
+      })}
+      {Array.from({ length: missing }, (_, n) => (
+        <li key={`missing-${n}`} className="studio-result is-lost">
+          <div className="studio-result-main">
+            <p className="studio-original">
+              No original <span className="studio-source is-missing">Missing</span>
+            </p>
+            <p className="studio-reason">
+              The model didn't write a usable “Original → name” line for it: see the raw reply below
+            </p>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -419,6 +465,9 @@ function BatchColumn({
   const counts = { ...NO_RATINGS };
   if (run) Object.values(run.ratings).forEach((r) => (counts[r.verdict] += 1));
   const rated = counts.good + counts.bad + counts.fixed;
+  // Every original asked for is on offer, thrown out or failed (run.lost), or missing.
+  const kept = run ? new Set(run.pairs.map((pair) => api.nameKey(pair.original))).size : 0;
+  const missing = run ? Math.max(0, api.BATCH_SIZE - kept - run.lost.length) : 0;
 
   // Clicking or tabbing into a column points the keyboard shortcuts at it.
   return (
@@ -479,9 +528,9 @@ function BatchColumn({
             </p>
             <Tally counts={counts} unrated={run.pairs.length - rated} />
           </div>
-          <RunStats run={run} />
+          <RunStats run={run} kept={kept} missing={missing} />
           {run.pairs.length === 0 ? (
-            <Empty>The model came back with nothing usable. Check the raw reply below.</Empty>
+            <Empty>No names on offer: every original was thrown out, failed or missing.</Empty>
           ) : (
             <ol className="studio-results">
               {run.pairs.map((pair, n) => {
@@ -503,6 +552,7 @@ function BatchColumn({
               })}
             </ol>
           )}
+          <LostRows lost={run.lost} missing={missing} />
           <UnderTheHood prompt={run.prompt} raw={run.raw} dropped={run.dropped} />
         </>
       )}
@@ -615,6 +665,7 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
           promptId: pickFor(k),
           pairs: [],
           dropped: [],
+          lost: [],
           ratings: {},
           error: null,
         };
@@ -781,7 +832,6 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
     <Panel
       className="dash-span-full"
       title="Playground"
-      sub={`Test batches of ${api.BATCH_SIZE} originals, built exactly like a member roll · no credits spent · nothing reaches members until you make a version live`}
       aside={
         <Seg
           label="Playground mode"
@@ -805,7 +855,6 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
         }}
       >
         <label className="studio-field">
-          <span>Theme (blank = random topic, like a real roll)</span>
           <input
             className="studio-input"
             type="text"
@@ -827,37 +876,6 @@ function Playground({ prompts, exampleKeys, onRate, onStar, onMakeLive, livePend
           {busy ? "Generating…" : mode === "compare" ? "Generate A, then B" : `Generate ${api.BATCH_SIZE}`}
         </button>
       </form>
-
-      <div className="studio-cook">
-        <button
-          id="studio-cook"
-          type="button"
-          role="switch"
-          className="studio-switch"
-          aria-checked={cookNext}
-          aria-describedby="studio-cook-hint"
-          onClick={() => {
-            setCookNext(!cookNext);
-            if (cookNext) dropNext();
-          }}
-        />
-        <div className="studio-cook-text">
-          <label htmlFor="studio-cook" className="studio-cook-label">
-            Keep the next batch cooking
-          </label>
-          <p id="studio-cook-hint" className="dash-note">
-            One version only. As soon as a batch lands, the next one with the same version and theme starts in the
-            background, so Generate shows it instantly; unrated names of the batch it replaces are dropped. The model
-            server is shared with members' live rolls and answers one request at a time, so while it cooks, members
-            wait.
-          </p>
-          {cookNote && (
-            <p className="dash-note studio-cook-status" role="status">
-              {cookNote}
-            </p>
-          )}
-        </div>
-      </div>
 
       <KeyLegend target={mode === "compare" ? (target === 0 ? "A" : "B") : null} />
 
@@ -900,7 +918,6 @@ function VersionsPanel({ prompts, onEdit, onMakeLive, livePending }) {
     <Panel
       className="dash-span-main"
       title="Prompt versions"
-      sub={`${fmt(prompts.length)} versions · ${live ? `${versionName(live)} is live` : "none live: rolls use the built-in prompt"}`}
       aside={
         prompts.length > 0 && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => onEdit(live ?? rows[0])}>
@@ -1119,15 +1136,26 @@ function PromptEditor({ draft, base, onSave, onCancel }) {
 
 /* ---------- example pool ---------- */
 
-/** "borg" fused into a word, like the edge function and submissions require. */
-const FUSED_BORG = /\w+borg|borg\w+/i;
-
-function AddExample({ onAdd }) {
+/**
+ * The hand-typed "Original → BORG name" form. The ref's `fill({ name, original })` puts a name
+ * picked from the board in it and moves to the original, which board names often lack.
+ */
+const AddExample = forwardRef(function AddExample({ onAdd }, ref) {
   const [original, setOriginal] = useState("");
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const ready = original.trim() && FUSED_BORG.test(name);
+  const originalRef = useRef(null);
+  const ready = original.trim() && api.FUSED_BORG.test(name);
+
+  useImperativeHandle(ref, () => ({
+    fill(pick) {
+      setName(pick.name);
+      setOriginal(pick.original ?? "");
+      setError(null);
+      originalRef.current?.focus();
+    },
+  }));
 
   const submit = async (event) => {
     event.preventDefault();
@@ -1147,11 +1175,12 @@ function AddExample({ onAdd }) {
   return (
     <form className="studio-add-example" onSubmit={submit}>
       <input
+        ref={originalRef}
         className="studio-input"
         type="text"
         value={original}
         maxLength={80}
-        placeholder="Original: Ron Burgundy"
+        placeholder="Original"
         aria-label="Original"
         onChange={(event) => setOriginal(event.target.value)}
       />
@@ -1161,7 +1190,7 @@ function AddExample({ onAdd }) {
         type="text"
         value={name}
         maxLength={80}
-        placeholder="BORG name: Ron Borgundy"
+        placeholder="BORG name"
         aria-label="BORG name"
         onChange={(event) => setName(event.target.value)}
       />
@@ -1175,9 +1204,126 @@ function AddExample({ onAdd }) {
       )}
     </form>
   );
+});
+
+const BOARD_SOURCES = {
+  ai: ["AI", "A BORG AI name rated 👍 or ✏️ fixed in the Studio, with the original it riffs on"],
+  member: ["Member", "Sent in by a member and approved; members only send the name"],
+  classic: ["Classic", "One of the site's own names"],
+};
+/** Board names listed at once; searching narrows the rest down. */
+const BOARD_SHOWN = 40;
+
+/**
+ * Names already on the board that aren't in the example pool. One with a known original goes
+ * straight in; one without fills the form so only the original needs typing.
+ */
+function BoardPicker({ board, error, exampleKeys, onAdd, onFill }) {
+  const [query, setQuery] = useState("");
+  const [source, setSource] = useState("all");
+  const [pending, setPending] = useState([]);
+  const [addError, setAddError] = useState(null);
+  const open = board.filter((row) => !exampleKeys.has(row.key));
+  const needle = query.trim().toLowerCase();
+  const matches = open.filter(
+    (row) =>
+      (source === "all" || row.source === source) &&
+      (!needle || row.name.toLowerCase().includes(needle) || row.original?.toLowerCase().includes(needle))
+  );
+  const shown = matches.slice(0, BOARD_SHOWN);
+  const count = (key) => open.filter((row) => row.source === key).length;
+
+  const pick = async (row) => {
+    setAddError(null);
+    if (!row.original) {
+      onFill(row);
+      return;
+    }
+    setPending((current) => [...current, row.key]);
+    try {
+      await onAdd({ original: row.original, name: row.name });
+    } catch (failure) {
+      setAddError(`Couldn't add ${row.name}: ${failure.message}`);
+    }
+    setPending((current) => current.filter((key) => key !== row.key));
+  };
+
+  return (
+    <section className="studio-board" aria-label="Quick add from the board">
+      <div className="studio-board-head">
+        <input
+          className="studio-input"
+          type="search"
+          value={query}
+          maxLength={80}
+          placeholder={`Search: ${fmt(open.length)} names`}
+          aria-label="Search board names"
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <Seg
+          label="Board names from"
+          value={source}
+          onChange={setSource}
+          options={[
+            { key: "all", label: "All" },
+            ...Object.entries(BOARD_SOURCES).map(([key, [label]]) => ({ key, label: `${label} ${fmt(count(key))}` })),
+          ]}
+        />
+      </div>
+      {error && (
+        <p className="studio-row-error" role="alert">
+          Couldn't load member and AI names ({error}). Showing the classics.
+        </p>
+      )}
+      {addError && (
+        <p className="studio-row-error" role="alert">
+          {addError}
+        </p>
+      )}
+      {shown.length === 0 ? (
+        <p className="studio-board-note">
+          {open.length ? "No board names match." : "Every board name is already in the pool."}
+        </p>
+      ) : (
+        <ol className="dash-list studio-board-list">
+          {shown.map((row) => {
+            const [label, title] = BOARD_SOURCES[row.source];
+            return (
+              <li key={row.key} className="dash-row">
+                <div className="dash-row-main">
+                  <p className="dash-row-name">{row.name}</p>
+                  <p className="dash-row-meta">
+                    <span className={row.original ? "" : "is-guest"}>{row.original ?? "No original yet"}</span>
+                    <span className={`studio-source is-board-${row.source}`} title={title}>
+                      {label}
+                    </span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={`studio-link${row.original ? " is-strong" : ""}`}
+                  disabled={pending.includes(row.key)}
+                  title={row.original ? "Add to the example pool" : "Put it in the form above and type its original"}
+                  onClick={() => pick(row)}
+                >
+                  {row.original ? "⭐ Add" : "Fill in"}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {matches.length > shown.length && (
+        <p className="studio-board-note">
+          {fmt(matches.length - shown.length)} more: search to narrow them down.
+        </p>
+      )}
+    </section>
+  );
 }
 
-function ExamplePool({ examples, live, onToggle, onAdd }) {
+function ExamplePool({ examples, exampleKeys, board, boardError, live, onToggle, onAdd }) {
+  const formRef = useRef(null);
   const [filter, setFilter] = useState("all");
   const [pending, setPending] = useState([]);
   const on = examples.filter((e) => e.enabled).length;
@@ -1192,10 +1338,7 @@ function ExamplePool({ examples, live, onToggle, onAdd }) {
   return (
     <Panel
       className="dash-span-side"
-      title="Example pool"
-      sub={`${fmt(on)} on · ${fmt(examples.length - on)} off${
-        live ? ` · ${versionName(live)} shows ${live.example_count} per batch as format examples` : ""
-      }`}
+      title={`Example pool (${fmt(on)})`}
       aside={
         <Seg
           label="Filter examples"
@@ -1209,7 +1352,14 @@ function ExamplePool({ examples, live, onToggle, onAdd }) {
         />
       }
     >
-      <AddExample onAdd={onAdd} />
+      <AddExample ref={formRef} onAdd={onAdd} />
+      <BoardPicker
+        board={board}
+        error={boardError}
+        exampleKeys={exampleKeys}
+        onAdd={onAdd}
+        onFill={(row) => formRef.current?.fill(row)}
+      />
       {rows.length === 0 ? (
         <Empty>{examples.length ? "Nothing in this filter." : "No examples yet. ⭐ a name or add one above."}</Empty>
       ) : (
@@ -1680,16 +1830,6 @@ export default function Studio() {
       <div className="dash-head">
         <div>
           <h1 className="dash-title">Studio.</h1>
-          <p className="dash-meta">
-            <span>{live ? `Live: ${versionLabel(live)}` : "No live version"}</span>
-            {data && (
-              <>
-                <span>{fmt(prompts.length)} versions</span>
-                <span>{fmt(data.examples.filter((e) => e.enabled).length)} examples on</span>
-                <span>{fmt(data.ratings.length)} ratings</span>
-              </>
-            )}
-          </p>
         </div>
         <div className="dash-controls">
           <button
@@ -1738,7 +1878,15 @@ export default function Studio() {
               onMakeLive={makeLive}
               livePending={livePending}
             />
-            <ExamplePool examples={data.examples} live={live} onToggle={toggleExample} onAdd={star} />
+            <ExamplePool
+              examples={data.examples}
+              exampleKeys={exampleKeys}
+              board={data.board}
+              boardError={data.boardError}
+              live={live}
+              onToggle={toggleExample}
+              onAdd={star}
+            />
             {editorDraft && (
               <div ref={editorRef} className="dash-span-full">
                 <PromptEditor

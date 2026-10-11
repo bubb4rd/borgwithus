@@ -20,6 +20,10 @@ import { supabase } from "../../lib/supabase";
 //                                    original, source, likes, dislikes }], examples: [{ original,
 //                                    name }] }   fine-tuning sources, built into files by
 //     trainingData.js (supabase/migrations/20261016000000_borg_ai_training.sql)
+//   get_borg_board_pool() -> [{ name, original, source: "ai" | "member" }]   Studio-approved AI names
+//                            (with their original) and approved member names (original null),
+//                            quick-added to the example pool alongside the classics in data.json
+//     (supabase/migrations/20261017000000_borg_board_pool.sql)
 //   save_borg_prompt(p_label, p_system_prompt, p_temperature, p_example_count) -> prompt
 //     Versions are immutable so every rating stays tied to the exact prompt that made the name;
 //     editing saves the next version.
@@ -32,7 +36,9 @@ import { supabase } from "../../lib/supabase";
 // Test batches come from the borg-ai-studio edge function (admins only, spends no credits, logs
 // no rolls; see supabase/functions/borg-ai-studio/index.ts):
 //   { promptId, theme, topic?, avoid } -> { pairs: [{ original, name, source, swap }], dropped,
-//                                           topic, prompt: { system, user }, raw, ms }
+//                                           lost: [{ original, name, reason }], topic,
+//                                           prompt: { system, user }, raw, ms }
+//   lost: the model's originals that offer no name; reason "known-original" | "known-name" | "no-name".
 //   topic (blank theme only) reuses a random topic, so two versions can be compared on one task.
 
 /** Originals per batch, set by BATCH_SIZE in supabase/functions/_shared/borg-ai.ts. */
@@ -48,11 +54,16 @@ async function rpc(name, args) {
   return result;
 }
 
-// Member feedback is its own call so a failure there doesn't take the rest of the Studio down.
+// Member feedback and the board pool are their own calls so a failure there doesn't take the rest
+// of the Studio down.
 export async function fetchStudio() {
-  const [result, feedback] = await Promise.all([
+  const [result, feedback, board] = await Promise.all([
     rpc("get_borg_studio"),
     rpc("get_borg_ai_feedback").then(
+      (rows) => ({ rows: rows ?? [], error: null }),
+      (failure) => ({ rows: [], error: failure.message })
+    ),
+    rpc("get_borg_board_pool").then(
       (rows) => ({ rows: rows ?? [], error: null }),
       (failure) => ({ rows: [], error: failure.message })
     ),
@@ -63,7 +74,27 @@ export async function fetchStudio() {
     ratings: result?.ratings ?? [],
     feedback: feedback.rows,
     feedbackError: feedback.error,
+    board: boardPool(board.rows),
+    boardError: board.error,
   };
+}
+
+/** "borg" fused into a word, like the edge function and submissions require of every name. */
+export const FUSED_BORG = /\w+borg|borg\w+/i;
+
+/**
+ * Every name on the board an example can be made from, one per name: Studio-approved AI names
+ * (which know their original), approved member names, then the site's classics. Names without
+ * "borg" fused into a word can't be examples, so they're left out.
+ */
+function boardPool(rows) {
+  const classics = data.borgs.map((name) => ({ name, original: null, source: "classic" }));
+  const pool = new Map();
+  for (const row of [...rows, ...classics]) {
+    const key = nameKey(row.name);
+    if (key && FUSED_BORG.test(row.name) && !pool.has(key)) pool.set(key, { ...row, key });
+  }
+  return [...pool.values()];
 }
 
 export const savePrompt = ({ label, systemPrompt, temperature, exampleCount }) =>
@@ -115,6 +146,7 @@ export async function generateBatch({ promptId, theme, topic }) {
   return {
     pairs: body.pairs,
     dropped: body.dropped ?? [],
+    lost: body.lost ?? [],
     topic: body.topic ?? null,
     prompt: body.prompt ?? null,
     raw: body.raw ?? "",
