@@ -2,7 +2,7 @@
    class of its own is studio- prefixed. */
 
 .dash-page {
-  --studio-good: var(--acid);
+  --studio-good: var(--dash-up);
   --studio-bad: var(--dash-down);
   --studio-fixed: var(--blue);
   --studio-star: var(--dash-members);
@@ -531,7 +531,7 @@ select.studio-input {
   opacity: 1;
 }
 
-.studio-verdict.is-good[aria-pressed='true'] { border-color: var(--studio-good); background: rgba(214, 255, 61, 0.14); }
+.studio-verdict.is-good[aria-pressed='true'] { border-color: var(--studio-good); background: color-mix(in srgb, var(--studio-good) 14%, transparent); }
 .studio-verdict.is-bad[aria-pressed='true'] { border-color: var(--studio-bad); background: rgba(255, 107, 94, 0.14); }
 .studio-verdict.is-fixed[aria-pressed='true'] { border-color: var(--studio-fixed); background: rgba(27, 155, 240, 0.16); }
 .studio-verdict.is-star[aria-pressed='true'] { border-color: var(--studio-star); background: rgba(255, 181, 71, 0.16); }
@@ -626,7 +626,7 @@ select.studio-input {
 /* The live version: tinted, with an acid edge. */
 .studio-versions tbody tr.is-live th,
 .studio-versions tbody tr.is-live td {
-  background: rgba(214, 255, 61, 0.05);
+  background: color-mix(in srgb, var(--acid) 5%, transparent);
 }
 
 .studio-versions tbody tr.is-live th {
@@ -931,7 +931,7 @@ select.studio-input {
 }
 
 .studio-pick.is-picked .studio-pick-row {
-  background: rgba(214, 255, 61, 0.07);
+  background: color-mix(in srgb, var(--acid) 7%, transparent);
 }
 
 .studio-pick-main {

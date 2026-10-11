@@ -20,7 +20,7 @@ out vec4 outColor;
 const vec3 INK  = vec3(0.110, 0.106, 0.129); // --ink-soft
 const vec3 DEEP = vec3(0.039, 0.310, 0.588); // --blue-deep
 const vec3 BLUE = vec3(0.106, 0.608, 0.941); // --blue
-const vec3 ACID = vec3(0.839, 1.000, 0.239); // --acid
+const vec3 ACID = vec3(1.000, 0.416, 0.169); // --acid
 const vec3 NAVY = mix(INK, DEEP, 0.45);
 
 vec2 hash2(vec2 p) {
