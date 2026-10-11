@@ -146,15 +146,22 @@ export function isUsableName(name: string) {
 
 const ARROW = /\s*(?:-+>|→|=>|[–—]>)\s*/;
 
+// Some replies label each side instead of using an arrow, on two lines ("Original: Halo" then
+// "BORG name: Halborg") or one ("Original: Halo, BORG name: Halborg"). Each such pair is rewritten
+// as "Halo -> Halborg" before the arrow parsing below.
+const LABELLED_PAIR =
+  /^[^\S\n]*(?:[*\-•>#]+[^\S\n]*|\d+[.)][^\S\n]*)?\**original\**[^\S\n]*[:=–—-][^\S\n]*([^\n|]+?)[^\S\n]*(?:[\n|,;][^\S\n]*)+\**(?:borg(?:ed)?(?:[^\S\n]+name)?|name)\**[^\S\n]*[:=–—-][^\S\n]*([^\n|]+)/gim;
+
 // Models list "Original -> Name" pairs one per line, or on one line split by "|" or commas, and
 // pad them with chatter, quotes, labels ("Original: …") and asides ("Name (Theme)"). Lines
-// without an arrow count when a single spaced dash splits them ("Donald Trump - Don Borgump").
-// The original is what follows the last label; for the name, the shortest fragment that still
-// reads as a borg name wins, or null when none does (code can still swap the original). Returns
-// one draft per usable original, without repeats.
+// without an arrow count when a single spaced dash splits them ("Donald Trump - Don Borgump"),
+// and labelled pairs count as above. The original is what follows the last label; for the name,
+// the shortest fragment that still reads as a borg name wins, or null when none does (code can
+// still swap the original). Returns one draft per usable original, without repeats.
 export function extractDrafts(raw: string) {
   const drafts = new Map<string, Draft>();
-  for (const entry of raw.split(/\r?\n|\||,\s+/)) {
+  const text = raw.replace(LABELLED_PAIR, "$1 -> $2");
+  for (const entry of text.split(/\r?\n|\||,\s+/)) {
     let sides = entry.split(ARROW);
     if (sides.length === 1) sides = entry.split(/\s+[-–—]\s+/);
     if (sides.length !== 2) continue;

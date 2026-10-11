@@ -107,6 +107,22 @@ Deno.test("extractDrafts falls back to a spaced dash", () => {
   assertEquals(extractDrafts("Donald Trump - Don Borgumpf"), [{ original: "Donald Trump", name: "Don Borgumpf" }]);
 });
 
+Deno.test("extractDrafts reads pairs labelled Original / BORG name instead of an arrow", () => {
+  const raw = [
+    "Original: Halo",
+    "BORG name: Halborg",
+    "Original: Mario Kart",
+    "BORG name: Marionelborgg",
+    "1. **Original:** Burger King, **Borg name:** Borger King",
+    "Theme: music/albums",
+  ].join("\r\n");
+  assertEquals(extractDrafts(raw), [
+    { original: "Halo", name: "Halborg" },
+    { original: "Mario Kart", name: "Marionelborgg" },
+    { original: "Burger King", name: "Borger King" },
+  ]);
+});
+
 Deno.test("extractDrafts splits pipe- and comma-separated entries", () => {
   const expected = [
     { original: "Morgan Freeman", name: "Borgan Freeman" },
