@@ -460,18 +460,20 @@ export function modelServer(): ModelServer | null {
   return { host, apiKey: Deno.env.get("AI_INFERENCE_API_KEY") || undefined };
 }
 
+/** Asks the model once; gives up after `timeoutMs` (at most MODEL_TIMEOUT_MS). */
 export async function askModel(
   server: ModelServer,
   model: string,
   messages: { role: string; content: string }[],
   temperature: number,
+  timeoutMs = MODEL_TIMEOUT_MS,
 ) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (server.apiKey) headers.Authorization = `Bearer ${server.apiKey}`;
   const response = await fetch(`${server.host}/api/chat`, {
     method: "POST",
     headers,
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+    signal: AbortSignal.timeout(Math.min(timeoutMs, MODEL_TIMEOUT_MS)),
     body: JSON.stringify({
       model,
       stream: false,
