@@ -31,3 +31,11 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:latest
             ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }}
+      # The pushed image must list the model without downloading anything (no GPU needed).
+      - name: Check the model is baked in
+        run: |
+          docker run --rm --entrypoint /bin/sh ghcr.io/${{ github.repository_owner }}/borg-ollama-worker:${{ github.sha }} -c '
+            echo "OLLAMA_MODELS=$OLLAMA_MODELS"; du -sh "$OLLAMA_MODELS" 2>&1; find "$OLLAMA_MODELS" -maxdepth 3 | head -20
+            ollama serve > /tmp/serve.log 2>&1 & sleep 5
+            grep "total blobs" /tmp/serve.log; ollama list
+            ollama list | grep -q "$MODEL"'
