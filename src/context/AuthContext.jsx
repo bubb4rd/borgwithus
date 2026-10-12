@@ -13,9 +13,21 @@ function friendlyAuthError(error) {
   }
   if (/email not confirmed/i.test(message)) return "Confirm your email first, then log in.";
   if (/password should be at least/i.test(message)) return "Passwords need at least 8 characters.";
-  if (/rate limit|too many/i.test(message)) return "Too many tries. Give it a minute.";
+  if (/different from the old password/i.test(message)) return "That's your current password. Pick a new one.";
+  if (/auth session missing/i.test(message)) return "That reset link expired. Ask for a new one.";
+  if (/rate limit|too many|only request this after/i.test(message)) return "Too many tries. Give it a minute.";
   return message || "Something went wrong. Try again.";
 }
+
+// Throws the site's copy for an auth error; `unconfirmed` marks a login blocked on email
+// confirmation, so the page can offer to send the email again.
+function authFailure(error) {
+  const failure = new Error(friendlyAuthError(error));
+  failure.unconfirmed = /email not confirmed/i.test(error?.message ?? "");
+  return failure;
+}
+
+const confirmRedirect = () => `${window.location.origin}/login`;
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -65,7 +77,7 @@ export function AuthProvider({ children }) {
       async logIn(email, password) {
         if (!supabase) throw new Error(OFFLINE_MESSAGE);
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw new Error(friendlyAuthError(error));
+        if (error) throw authFailure(error);
       },
 
       // Resolves to true when the account still needs its email confirmed before logging in.
@@ -74,10 +86,35 @@ export function AuthProvider({ children }) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { name }, emailRedirectTo: `${window.location.origin}/login` },
+          options: { data: { name }, emailRedirectTo: confirmRedirect() },
         });
-        if (error) throw new Error(friendlyAuthError(error));
+        if (error) throw authFailure(error);
         return !data.session;
+      },
+
+      async resendConfirmation(email) {
+        if (!supabase) throw new Error(OFFLINE_MESSAGE);
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: confirmRedirect() },
+        });
+        if (error) throw authFailure(error);
+      },
+
+      // The link signs the member in on /reset-password, where they pick a new password.
+      async requestPasswordReset(email) {
+        if (!supabase) throw new Error(OFFLINE_MESSAGE);
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw authFailure(error);
+      },
+
+      async updatePassword(password) {
+        if (!supabase) throw new Error(OFFLINE_MESSAGE);
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw authFailure(error);
       },
 
       async logOut() {

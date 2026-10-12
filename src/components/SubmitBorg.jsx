@@ -222,7 +222,10 @@ function Wall({ wall, onRemove }) {
 export default function SubmitBorg() {
   const { user, ready, online } = useAuth();
   const userId = user?.id ?? null;
-  const [wall, setWall] = useState({ status: "loading", rows: [] });
+  // `owner` is whose session loaded the rows. They include that member's pending and rejected
+  // names, so they never show for anyone else, not even for the render before the reload starts.
+  const [loaded, setLoaded] = useState({ owner: undefined, status: "loading", rows: [] });
+  const wall = loaded.owner === userId ? loaded : { status: "loading", rows: [] };
   const [quota, setQuota] = useState(null);
 
   // Reloads when the member changes so `mine` (and the Remove buttons) follow the session.
@@ -230,7 +233,8 @@ export default function SubmitBorg() {
     if (!supabase) return undefined;
     let active = true;
     supabase.rpc("get_borg_wall").then(({ data: rows, error }) => {
-      if (active) setWall(error ? { status: "error", rows: [] } : { status: "ready", rows });
+      if (!active) return;
+      setLoaded(error ? { owner: userId, status: "error", rows: [] } : { owner: userId, status: "ready", rows });
     });
     return () => {
       active = false;
@@ -252,14 +256,14 @@ export default function SubmitBorg() {
   // New names wait on review, so they join the member's own pending stickers at the front.
   const posted = useCallback(({ remaining, ...row }) => {
     setQuota((current) => current && { ...current, remaining });
-    setWall((current) => ({ status: "ready", rows: [row, ...current.rows] }));
+    setLoaded((current) => ({ ...current, status: "ready", rows: [row, ...current.rows] }));
   }, []);
 
   const remove = useCallback(async (id) => {
     const { data: remaining, error } = await supabase.rpc("remove_borg_submission", { p_id: id });
     if (error) return;
     setQuota((current) => current && { ...current, remaining });
-    setWall((current) => ({ ...current, rows: current.rows.filter((row) => row.id !== id) }));
+    setLoaded((current) => ({ ...current, rows: current.rows.filter((row) => row.id !== id) }));
   }, []);
 
   let panel = null;

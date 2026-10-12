@@ -1,7 +1,7 @@
 import React from "react";
 import SubpageHeader from "./SubpageHeader";
 
-// Shared frame for /login, /register and /review: the generator card look, with the content on
+// Shared frame for the account pages and /review: the generator card look, with the content on
 // the paper label.
 export default function AuthShell({ title, lede, children }) {
   return (
