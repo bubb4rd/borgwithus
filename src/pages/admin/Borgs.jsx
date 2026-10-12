@@ -612,7 +612,16 @@ export default function Borgs() {
   };
 
   const save = async (row, draft) => {
-    await api.saveBorg({ id: row.id, ...draft });
+    try {
+      await api.saveBorg({ id: row.id, updatedAt: row.updated_at, ...draft });
+    } catch (failure) {
+      if (!failure.stale) throw failure;
+      // Someone changed it meanwhile: close the form and show their version to edit again.
+      setEditing(null);
+      setNotice({ tone: "error", text: failure.message });
+      await load();
+      return;
+    }
     setEditing(null);
     const name = draft.name.trim();
     await changed(name === row.name ? `Saved ${name}.` : `Renamed ${row.name} to ${name}.`);
