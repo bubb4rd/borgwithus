@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabase";
 import { timeAgo } from "../../lib/timeAgo";
 import Borgs from "./Borgs";
 import { DailyChart, MixBar, Sparkline } from "./charts";
+import GeneratorAb from "./GeneratorAb";
 import { Empty, Panel } from "./Panel";
 import Studio from "./Studio";
 import {
@@ -796,6 +797,8 @@ function Dashboard({ data, range, loadedAt }) {
       </div>
 
       <Health d={d} t={t} range={range} />
+
+      <GeneratorAb range={range} loadedAt={loadedAt} />
 
       <div className="dash-lists">
         <RecentRolls rows={data.recentRolls} guests={d.recentGuestRolls} />

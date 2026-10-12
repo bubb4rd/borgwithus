@@ -1,0 +1,856 @@
+/* Jug configurator ("Studio", mockups/jug-configurator/a-studio.html): the jug photo on the left,
+   an ink panel on the right with Name it, Dye it and Keep it. The whole thing fits one screen on
+   desktop; under 900px the photo sits on top of the panel.
+   --flavour is the picked MiO's colour (the site's orange until one is picked). It tints the
+   card's hard shadow, the panel glow, the title highlight and the photo tag, and fades between
+   flavours because it's registered as a colour. */
+
+@property --flavour {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ff6a2b;
+}
+
+.jug-generators {
+  padding-block: var(--section-space);
+}
+
+.jug-config {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+  height: clamp(660px, calc(100vh - 120px), 820px);
+  margin-right: 14px;
+  border-radius: var(--radius);
+  border: 2px solid var(--ink);
+  background: var(--ink-soft);
+  box-shadow: 14px 14px 0 var(--flavour);
+  overflow: hidden;
+  transition: --flavour 0.6s ease;
+}
+
+/* ---------- stage ---------- */
+
+.jug-stage {
+  position: relative;
+  min-height: 0;
+  background: #e9e1d4;
+}
+
+/* A soft vignette pulls the eye to the jug and lifts the tag off the photo. */
+.jug-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(15, 14, 18, 0.35)),
+    linear-gradient(to left, rgba(15, 14, 18, 0.25), transparent 8%);
+}
+
+.jug-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 40%;
+}
+
+.jug-tag {
+  position: absolute;
+  z-index: 1;
+  top: 20px;
+  left: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.9rem 0.45rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(15, 14, 18, 0.8);
+  backdrop-filter: blur(6px);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.jug-tag i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--flavour);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--flavour) 35%, transparent);
+}
+
+.jug-tag.is-empty i {
+  background: transparent;
+  border: 1.5px solid var(--paper-dim);
+  box-shadow: none;
+}
+
+.jug-stage-error {
+  position: absolute;
+  z-index: 1;
+  inset: auto 20px 20px;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  background: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+/* ---------- panel ---------- */
+
+.jug-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.25rem;
+  min-height: 0;
+  padding: clamp(24px, 3vw, 40px);
+  border-left: 2px solid var(--ink);
+  background:
+    radial-gradient(90% 55% at 100% 0%, color-mix(in srgb, var(--flavour) 24%, transparent), transparent 70%),
+    var(--ink-soft);
+  overflow-y: auto;
+}
+
+.jug-fine,
+.jug-hint,
+.jug-text-btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+
+.jug-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.8rem, 4.4vw, 4.25rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+/* "borg" gets a marker swipe in the flavour colour. */
+.jug-title em {
+  font-style: normal;
+  padding: 0 0.06em;
+  background: linear-gradient(
+    transparent 76%,
+    color-mix(in srgb, var(--flavour) 80%, transparent) 76% 88%,
+    transparent 88%
+  );
+}
+
+.jug-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--rule);
+}
+
+/* Wraps on narrow screens, so the Classic/BORG AI toggle drops under the label instead of
+   squeezing its two halves unevenly. */
+.jug-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.7rem;
+  min-height: 36px;
+}
+
+.jug-step-label {
+  margin-right: auto;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.jug-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Shared easing for the configurator's motion: quick out, soft landing. */
+.jug-config {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+/* Classic / BORG AI: two equal halves with a paper pill that slides between them. */
+.jug-seg {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  flex-shrink: 0;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: rgba(15, 14, 18, 0.5);
+}
+
+.jug-seg::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 999px;
+  background: var(--paper);
+  transition: transform 0.4s var(--ease-spring);
+}
+
+.jug-seg[data-active='ai']::before {
+  transform: translateX(100%);
+}
+
+.jug-seg button {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.85rem;
+  white-space: nowrap;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  transition: color 0.3s var(--ease-out);
+}
+
+.jug-seg button:hover {
+  color: var(--paper);
+}
+
+.jug-seg button[aria-pressed='true'] {
+  color: var(--ink);
+}
+
+/* Height that glides to fit its content (AutoHeight). The inner padding, taken back by the
+   negative margin, leaves room for focus rings and hover shadows the overflow would clip. */
+.jug-auto {
+  margin: -6px;
+  overflow: hidden;
+  transition: height 0.38s var(--ease-out);
+}
+
+.jug-auto-inner {
+  padding: 6px;
+}
+
+.jug-swap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.jug-swap > * {
+  animation: jug-rise 0.45s var(--ease-out) both;
+}
+
+.jug-swap > :nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.jug-swap > :nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+@keyframes jug-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes jug-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The borg's label: a darker, slightly inset well behind the name, so it reads as the spot the
+   name lands in. The top margin matches the air below it (on the BORG! row and the BORG AI
+   form), so the well sits evenly between the Name it / toggle row and the controls. */
+.jug-name-well {
+  margin-top: 0.75rem;
+  padding: 1rem 1.15rem;
+  border-radius: 18px;
+  border: 1px solid rgba(243, 238, 226, 0.08);
+  background: rgba(10, 9, 13, 0.55);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.jug-name {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 3.1vw, 2.9rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  transition: color 0.5s var(--ease-out);
+}
+
+/* Once a MiO is picked, the name takes its colour like the card's shadow and the title's
+   underline, lifted to a readable lightness so Black Cherry and Berry Grape still show on ink.
+   Before that it stays paper white. */
+.jug-config.has-flavour .jug-name.is-set {
+  color: var(--flavour);
+  color: oklch(from var(--flavour) max(l, 0.74) c h);
+}
+
+.jug-name.is-empty {
+  color: rgba(243, 238, 226, 0.5);
+  animation: jug-rise 0.4s var(--ease-out) both;
+}
+
+/* Things that arrive after the rest (credits, errors, the like button, the save hint) fade in
+   rather than popping. */
+.jug-name-actions > *,
+.jug-ai .credits,
+.jug-ai .form-error,
+.jug-hint {
+  animation: jug-fade 0.35s var(--ease-out) both;
+}
+
+/* Same air below the name headline as the BORG AI form gets. */
+.jug-name-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+/* BORG! — the classic generator's verb, as a paper pill. */
+.jug-roll {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.15rem 0 0.95rem;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.jug-roll:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 3px 3px 0 var(--flavour);
+}
+
+.jug-roll:active {
+  transform: translate(0, 0);
+  box-shadow: none;
+}
+
+.jug-roll:active .jug-icon {
+  transform: rotate(120deg);
+}
+
+.jug-roll .jug-icon {
+  transition: transform 0.25s ease;
+}
+
+/* The site's like buttons are drawn for paper labels; on the ink panel they go light. */
+.jug-panel .like-btn {
+  min-height: 44px;
+  border-width: 1.5px;
+  border-color: var(--rule);
+  color: var(--paper);
+}
+
+.jug-panel .like-btn:hover,
+.jug-panel .like-btn.is-liked {
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.jug-panel .like-btn.is-disliked {
+  border-color: var(--blue-deep);
+  background: var(--blue-deep);
+  color: var(--paper);
+}
+
+/* Thumbs up / down with no label: round buttons the height of BORG!. */
+.jug-panel .like-btn.is-icon {
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+}
+
+.jug-panel .like-btn.is-icon .like-heart {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+/* BORG AI */
+/* A little air between the name headline above and the theme box. */
+.jug-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.jug-ai-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Ask, then the 👍/👎 pair for the name BORG AI gave. */
+.jug-ai-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.jug-ai-rate {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.jug-ai-rate .like-btn.is-icon {
+  width: 48px;
+  min-height: 48px;
+}
+
+/* Nothing to rate yet: there, but quiet. */
+.jug-panel .like-btn:disabled,
+.jug-panel .like-btn:disabled:hover {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: transparent;
+  border-color: var(--rule);
+  color: var(--paper);
+}
+
+/* A fresh BORG AI name: the pair springs to life, one thumb after the other. */
+.jug-ai-rate.is-live .like-btn {
+  animation: jug-pop 0.45s var(--ease-spring) both;
+}
+
+.jug-ai-rate.is-live .like-btn + .like-btn {
+  animation-delay: 0.07s;
+}
+
+@keyframes jug-pop {
+  from {
+    opacity: 0.35;
+    transform: scale(0.6);
+  }
+}
+
+.jug-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(243, 238, 226, 0.32);
+  background: rgba(15, 14, 18, 0.6);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.jug-input::placeholder {
+  color: rgba(243, 238, 226, 0.62);
+}
+
+.jug-input:focus {
+  outline: none;
+  border-color: var(--paper);
+}
+
+/* Sized to what it says: snug around "Ask", wider only while the thinking word shows. */
+.jug-ai-btn {
+  min-height: 48px;
+  padding-inline: 1.2rem 1.35rem;
+}
+
+.jug-sparkle {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  stroke: none;
+}
+
+/* BORG AI at work, like a chat app's "thinking" line: a gradient border running round the
+   button, a pulsing sparkle, and the status word shimmering and swapping. */
+@property --jug-spin {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.jug-ai-btn.is-thinking,
+.jug-ai-btn.is-thinking:hover {
+  cursor: progress;
+  transform: none;
+  box-shadow: 0 0 22px -6px color-mix(in srgb, var(--flavour) 70%, transparent);
+  border-color: transparent;
+  color: var(--paper);
+  background:
+    linear-gradient(var(--ink-soft), var(--ink-soft)) padding-box,
+    conic-gradient(from var(--jug-spin), var(--flavour), #b26bff, var(--blue), var(--flavour)) border-box;
+  animation: jug-spin 2.4s linear infinite;
+}
+
+@keyframes jug-spin {
+  to {
+    --jug-spin: 360deg;
+  }
+}
+
+.jug-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.jug-thinking .jug-sparkle {
+  animation: jug-sparkle 1.4s ease-in-out infinite;
+}
+
+@keyframes jug-sparkle {
+  50% {
+    transform: scale(0.72) rotate(45deg);
+    opacity: 0.7;
+  }
+}
+
+/* A fixed width, so the button doesn't resize as the words swap. */
+.jug-thinking-word {
+  display: inline-block;
+  width: 5.2em;
+  text-align: left;
+  color: transparent;
+  background: linear-gradient(
+      90deg,
+      rgba(243, 238, 226, 0.45) 0%,
+      var(--paper) 45%,
+      rgba(243, 238, 226, 0.45) 90%
+    )
+    0 0 / 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation:
+    jug-shimmer 1.6s linear infinite,
+    jug-word-in 0.3s ease-out;
+}
+
+@keyframes jug-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes jug-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.jug-panel .credit-pip {
+  border-color: var(--paper-dim);
+}
+
+.jug-panel .credits-text {
+  color: var(--paper-dim);
+}
+
+.jug-panel .form-error {
+  border-color: #ff6b7f;
+  color: #ffb3bd;
+}
+
+.jug-note {
+  font-size: 0.9375rem;
+  color: var(--paper-dim);
+}
+
+.jug-note a {
+  color: var(--paper);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* "Beta" rides inside the BORG AI toggle; under the BORG AI form a link opens the beta modal. */
+.jug-beta-badge {
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--flavour) 70%, currentColor);
+  background: color-mix(in srgb, var(--flavour) 22%, transparent);
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.jug-link {
+  align-self: flex-start;
+  color: var(--paper);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.jug-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Dye it */
+.jug-text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.jug-text-btn:hover {
+  border-color: var(--paper);
+  color: var(--paper);
+}
+
+.jug-text-btn .jug-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.jug-swatches {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.jug-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 0.1rem 0.55rem;
+  border-radius: 16px;
+  transition: background-color 0.15s ease;
+}
+
+.jug-swatch:hover {
+  background: rgba(243, 238, 226, 0.05);
+}
+
+/* Each flavour is a MiO squeeze: a drop with a highlight. */
+.jug-swatch i {
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 0 50% 50%;
+  background:
+    radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.5), transparent 32%),
+    var(--swatch);
+  box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.25);
+  transform: rotate(-45deg);
+  transition: transform 0.2s cubic-bezier(0.2, 1.4, 0.4, 1), box-shadow 0.2s ease;
+}
+
+.jug-swatch:hover i {
+  transform: translateY(-3px) rotate(-45deg);
+}
+
+.jug-swatch span {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+
+.jug-swatch[aria-pressed='true'] {
+  background: rgba(243, 238, 226, 0.08);
+}
+
+.jug-swatch[aria-pressed='true'] i {
+  transform: scale(1.18) rotate(-45deg);
+  box-shadow:
+    inset -3px -3px 6px rgba(0, 0, 0, 0.25),
+    0 0 0 3px var(--ink-soft),
+    0 0 0 5px var(--paper);
+}
+
+.jug-swatch[aria-pressed='true'] span {
+  color: var(--paper);
+  font-weight: 700;
+}
+
+/* Keep it */
+.jug-fine {
+  max-width: 18ch;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+/* Save and Share share a row, and wrap to one each (each full width) when the panel is too
+   narrow for both, as on 320px phones; down to about 360px they still fit side by side. */
+.jug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Save and Share ease in from their disabled look once the jug is ready. */
+.jug-actions .btn {
+  flex: 1 1 auto;
+  min-height: 56px;
+  transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease,
+    box-shadow 0.18s ease, opacity 0.4s var(--ease-out);
+}
+
+.jug-actions .btn-acid {
+  flex: 2 1 auto;
+}
+
+.jug-actions .btn-acid:hover {
+  box-shadow: 4px 4px 0 var(--paper);
+}
+
+.jug-hint {
+  font-size: 0.6875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jug-config,
+  .jug-seg::before,
+  .jug-auto {
+    transition: none;
+  }
+
+  .jug-swap > *,
+  .jug-name.is-empty,
+  .jug-name-actions > *,
+  .jug-ai .credits,
+  .jug-ai .form-error,
+  .jug-hint,
+  .jug-ai-rate.is-live .like-btn {
+    animation: none;
+  }
+
+  .jug-roll:hover,
+  .jug-roll:active .jug-icon,
+  .jug-swatch:hover i {
+    transform: none;
+  }
+
+  .jug-swatch:hover i,
+  .jug-swatch[aria-pressed='true'] i {
+    transform: rotate(-45deg);
+  }
+
+  /* Thinking stays readable but still: the border and words hold. */
+  .jug-ai-btn.is-thinking,
+  .jug-thinking .jug-sparkle,
+  .jug-thinking-word {
+    animation: none;
+  }
+
+  .jug-thinking-word {
+    color: var(--paper);
+  }
+}
+
+@media (max-width: 900px) {
+  .jug-config {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    margin-right: 8px;
+    box-shadow: 8px 8px 0 var(--flavour);
+  }
+
+  .jug-stage {
+    aspect-ratio: 4 / 4.8;
+  }
+
+  .jug-canvas {
+    object-position: 50% 50%;
+  }
+
+  .jug-panel {
+    gap: 1.5rem;
+    border-left: 0;
+    border-top: 2px solid var(--ink);
+    overflow: visible;
+  }
+
+  .jug-swatches {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 0.4rem;
+  }
+}
+
+/* Phones: the theme box gets the full width; under it, with room to breathe, Ask (and its
+   thinking state) at its own width, with the 👍/👎 pair pinned to the right so they stay put
+   when Ask widens to "Thinking". */
+@media (max-width: 600px) {
+  .jug-ai-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .jug-ai-btn {
+    flex: none;
+    padding-inline: 1rem 1.15rem;
+  }
+
+  .jug-ai-rate {
+    margin-left: auto;
+  }
+}
+
+/* The narrowest phones (320px): the Classic / BORG AI toggle spans the panel with tighter
+   halves, so "BORG AI" and its Beta chip still fit inside it. */
+@media (max-width: 360px) {
+  .jug-seg {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .jug-seg button {
+    padding-inline: 0.4rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.03em;
+  }
+}

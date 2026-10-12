@@ -508,6 +508,10 @@ button.dash-legend-item:hover {
   margin-top: 1rem;
 }
 
+.dash-ab {
+  margin-top: 1rem;
+}
+
 .dash-lists {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);

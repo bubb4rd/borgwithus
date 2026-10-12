@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { useBorgs } from "../context/BorgsContext";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
+import useBorgAi from "../lib/useBorgAi";
 import BorgAiLabel from "./BorgAiLabel";
 import DislikeButton from "./DislikeButton";
 import LikeButton from "./LikeButton";
 
-const MAX_THEME_LENGTH = 120;
+export const MAX_THEME_LENGTH = 120;
 
-function CreditPips({ credits }) {
+export function CreditPips({ credits }) {
   return (
     <div className="credits">
       <span className="credit-pips" aria-hidden="true">
@@ -48,54 +47,18 @@ function LockedPanel() {
 }
 
 function GeneratorPanel({ userId }) {
-  const { avoid } = useBorgs();
   const [theme, setTheme] = useState("");
-  const [result, setResult] = useState(null);
-  const [credits, setCredits] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const { result, credits, outOfCredits, loading, error, generate } = useBorgAi(userId);
 
-  useEffect(() => {
-    let active = true;
-    supabase.rpc("get_ai_credits").then(({ data: next }) => {
-      if (active && next) setCredits(next);
-    });
-    return () => {
-      active = false;
-    };
-  }, [userId]);
-
-  const outOfCredits = credits?.remaining === 0;
-
-  const generate = async (event) => {
+  const onSubmit = (event) => {
     event.preventDefault();
-    if (loading || outOfCredits) return;
-
-    setLoading(true);
-    setError(null);
-
-    const { data: payload, error: invokeError } = await supabase.functions.invoke(
-      "generate-borg-name",
-      { body: { prompt: theme.trim(), avoid } }
-    );
-
-    // Non-2xx responses still carry { error, remaining } in the body.
-    const body = invokeError
-      ? await invokeError.context?.json?.().catch(() => null)
-      : payload;
-
-    if (typeof body?.remaining === "number") {
-      setCredits((current) => current && { ...current, remaining: body.remaining });
-    }
-    if (body?.name) setResult(body.name);
-    else setError(body?.error ?? "BORG AI couldn't be reached. Try again.");
-    setLoading(false);
+    generate(theme);
   };
 
   const nameState = loading ? "is-loading" : result ? "is-set" : "is-empty";
 
   return (
-    <form className="label ai-label" onSubmit={generate}>
+    <form className="label ai-label" onSubmit={onSubmit}>
       <div className="label-tape" aria-hidden="true" />
       <label className="label-row">
         <span className="label-key">Theme (optional)</span>

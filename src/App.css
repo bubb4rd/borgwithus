@@ -734,7 +734,9 @@
   text-shadow: 2px 2px 0 var(--ink);
 }
 
-.is-empty {
+/* Placeholder text on the paper labels. Scoped to .label: it's dark ink, unreadable on the
+   dark surfaces that also use is-empty (the jug configurator's flavour tag). */
+.label .is-empty {
   color: rgba(15, 14, 18, 0.28);
 }
 

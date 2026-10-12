@@ -51,15 +51,11 @@ export function DislikesProvider({ children }) {
     [disliked, userId]
   );
 
-  const toggleDislike = useCallback(
-    (name) => setDislike(name, !disliked.has(name)),
-    [disliked, setDislike]
-  );
   const clearDislike = useCallback((name) => setDislike(name, false), [setDislike]);
 
   const value = useMemo(
-    () => ({ disliked, toggleDislike, clearDislike }),
-    [disliked, toggleDislike, clearDislike]
+    () => ({ disliked, setDislike, clearDislike }),
+    [disliked, setDislike, clearDislike]
   );
 
   return <DislikesContext.Provider value={value}>{children}</DislikesContext.Provider>;
