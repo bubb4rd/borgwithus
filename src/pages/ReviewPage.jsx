@@ -42,7 +42,8 @@ export default function ReviewPage() {
     });
     setBusyId(null);
     if (rpcError) {
-      setError("Couldn't save that review. Try again.");
+      // P0001: raised by review_borg_submission() with copy meant for the page.
+      setError(rpcError.code === "P0001" ? rpcError.message : "Couldn't save that review. Try again.");
       return;
     }
     // A null result means another admin got there first or the member removed it: gone either way.
