@@ -295,14 +295,35 @@ export default function JugConfigurator() {
   const [file, setFile] = useState(null);
   const [canShare, setCanShare] = useState(false);
 
+  // The photos (~650 KB) and fonts start loading once the configurator is within a couple of
+  // screens, so visitors who never scroll down don't download them.
+  const rootRef = useRef(null);
   useEffect(() => {
     let active = true;
-    loadJugAssets().then(
-      (loaded) => active && setAssets(loaded),
-      () => active && setAssetError(true)
+    const load = () =>
+      loadJugAssets().then(
+        (loaded) => active && setAssets(loaded),
+        () => active && setAssetError(true)
+      );
+    const node = rootRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      load();
+      return () => {
+        active = false;
+      };
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        load();
+      },
+      { rootMargin: "1200px 0px" }
     );
+    observer.observe(node);
     return () => {
       active = false;
+      observer.disconnect();
     };
   }, []);
 
@@ -374,7 +395,7 @@ export default function JugConfigurator() {
     ) : (
       <p className="jug-note">
         BORG AI cooks up names nobody's heard, five a day for members.{" "}
-        <Link to="/register" state={{ from: "/#borg" }}>
+        <Link to="/register" state={{ from: "/#borg" }} onClick={() => logGeneratorEvent("signup_click")}>
           Sign up free
         </Link>{" "}
         or{" "}
@@ -388,6 +409,7 @@ export default function JugConfigurator() {
 
   return (
     <section
+      ref={rootRef}
       id="borg"
       className={`jug-config${flavour ? " has-flavour" : ""}`}
       aria-labelledby="jug-title"

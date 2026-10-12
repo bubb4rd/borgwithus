@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { logGeneratorEvent } from "../lib/generatorExperiment";
 import useBorgAi from "../lib/useBorgAi";
 import BorgAiLabel from "./BorgAiLabel";
 import DislikeButton from "./DislikeButton";
@@ -35,7 +36,12 @@ function LockedPanel() {
       </div>
       <p className="ai-note">Make a free account to unlock BORG AI. Credits refill every day.</p>
       <div className="label-actions">
-        <Link to="/register" state={{ from: "/#ai" }} className="btn btn-ink">
+        <Link
+          to="/register"
+          state={{ from: "/#ai" }}
+          className="btn btn-ink"
+          onClick={() => logGeneratorEvent("signup_click")}
+        >
           Sign up free
         </Link>
         <Link to="/login" state={{ from: "/#ai" }} className="btn btn-ink-ghost">

@@ -798,7 +798,7 @@ function Dashboard({ data, range, loadedAt }) {
 
       <Health d={d} t={t} range={range} />
 
-      <GeneratorAb range={range} loadedAt={loadedAt} />
+      <GeneratorAb loadedAt={loadedAt} />
 
       <div className="dash-lists">
         <RecentRolls rows={data.recentRolls} guests={d.recentGuestRolls} />

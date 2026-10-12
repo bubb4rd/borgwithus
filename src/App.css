@@ -615,6 +615,11 @@
 
 /* ---------- generator ---------- */
 
+/* Holds the jug configurator's place while its code loads (JugConfigurator.css loads with it). */
+.jug-placeholder {
+  height: clamp(660px, calc(100vh - 120px), 820px);
+}
+
 /* Classic generator and BORG AI side by side; both cards stack intro over label. */
 .generators {
   display: grid;

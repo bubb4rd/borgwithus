@@ -512,6 +512,48 @@ button.dash-legend-item:hover {
   margin-top: 1rem;
 }
 
+.dash-ab-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.dash-ab-range label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: var(--dash-mono-xs);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+
+.dash-ab-range input {
+  min-height: 30px;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--paper);
+  font: inherit;
+  color-scheme: dark;
+}
+
+.dash-ab-verdict {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.dash-ab-headline {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
 .dash-lists {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
