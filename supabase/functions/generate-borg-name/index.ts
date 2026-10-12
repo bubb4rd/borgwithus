@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
   if (!user) return json({ error: "Log in to use BORG AI." }, 401);
 
-  let body: { prompt?: unknown; avoid?: unknown };
+  let body: { prompt?: unknown; avoid?: unknown; variant?: unknown; visitor?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -71,6 +71,10 @@ Deno.serve(async (req) => {
 
   // Names that already exist on the site; a new borg must not reuse one.
   const siteNames = Array.isArray(body.avoid) ? body.avoid.slice(0, MAX_AVOID_NAMES) : [];
+
+  // The home page's generator A/B test: which group the browser is in and its visitor id.
+  const variant = body.variant === "classic" || body.variant === "jug" ? body.variant : null;
+  const visitor = typeof body.visitor === "string" ? body.visitor.trim().slice(0, 64) || null : null;
 
   if (!server) {
     console.error("AI_INFERENCE_API_HOST is not set");
@@ -117,7 +121,7 @@ Deno.serve(async (req) => {
     const { name, original, source } = pair;
     const { error: logError } = await admin
       .from("borg_rolls")
-      .insert({ user_id: user.id, kind: "ai", name, original, source });
+      .insert({ user_id: user.id, kind: "ai", name, original, source, variant, visitor });
     if (logError) console.error("borg_rolls insert failed:", logError.message);
   }
 

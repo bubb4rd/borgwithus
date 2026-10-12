@@ -615,6 +615,11 @@
 
 /* ---------- generator ---------- */
 
+/* Holds the jug configurator's place while its code loads (JugConfigurator.css loads with it). */
+.jug-placeholder {
+  height: clamp(660px, calc(100vh - 120px), 820px);
+}
+
 /* Classic generator and BORG AI side by side; both cards stack intro over label. */
 .generators {
   display: grid;
@@ -734,7 +739,9 @@
   text-shadow: 2px 2px 0 var(--ink);
 }
 
-.is-empty {
+/* Placeholder text on the paper labels. Scoped to .label: it's dark ink, unreadable on the
+   dark surfaces that also use is-empty (the jug configurator's flavour tag). */
+.label .is-empty {
   color: rgba(15, 14, 18, 0.28);
 }
 

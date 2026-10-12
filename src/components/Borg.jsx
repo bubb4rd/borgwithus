@@ -1,20 +1,15 @@
 import React, { useState } from "react";
 import data from "../data.json";
 import { useBorgs } from "../context/BorgsContext";
-import { supabase } from "../lib/supabase";
+import { logRoll } from "../lib/generatorExperiment";
 import LikeButton from "./LikeButton";
 
 // Never hand back the value already on screen, so every click visibly changes.
-function pickDifferent(list, current) {
+export function pickDifferent(list, current) {
   if (list.length < 2) return list[0];
   let next = current;
   while (next === current) next = list[Math.floor(Math.random() * list.length)];
   return next;
-}
-
-// Counts the roll for the admin dashboard. Fire and forget: stats never block the generator.
-function logRoll(kind, name) {
-  supabase?.rpc("log_borg_roll", { p_kind: kind, p_name: name }).then(() => {});
 }
 
 export default function Borg() {

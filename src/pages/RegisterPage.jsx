@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import { useAuth } from "../context/AuthContext";
+import { logGeneratorEvent } from "../lib/generatorExperiment";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -32,6 +33,8 @@ export default function RegisterPage() {
     setError(null);
     try {
       const needsConfirmation = await register(form.get("name").trim(), email, password);
+      // The generator A/B test counts accounts made in this browser.
+      logGeneratorEvent("signup");
       if (needsConfirmation) setConfirmEmail(email);
       else navigate(from, { replace: true });
     } catch (err) {
