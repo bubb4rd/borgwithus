@@ -554,6 +554,10 @@ button.dash-legend-item:hover {
   text-transform: uppercase;
 }
 
+.dash-ab-unstarted {
+  margin-bottom: 1rem;
+}
+
 .dash-lists {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Empty, Panel } from "./Panel";
-import { fmt, fmtPct } from "./metrics";
+import { fmt, fmtDateTime, fmtPct } from "./metrics";
 
 // The home page's generator A/B test (get_generator_ab): the BORG/MIO + BORG AI cards ("classic")
 // against the jug configurator ("jug"). Runs over a fixed range of UTC days, from the first real
@@ -55,7 +55,13 @@ function normalize(raw) {
       ];
     })
   );
-  return { from: raw?.from ?? null, to: raw?.to ?? null, days: count(raw?.days), variants };
+  return {
+    from: raw?.from ?? null,
+    to: raw?.to ?? null,
+    days: count(raw?.days),
+    startedAt: raw?.started_at ?? null,
+    variants,
+  };
 }
 
 // ---------- statistics ----------
@@ -149,10 +155,14 @@ function Verdict({ variants }) {
   );
 }
 
-// Loads alongside the dashboard: again whenever the dates change or the dashboard refreshes.
+// Loads alongside the dashboard: again whenever the dates change, the test is (re)started or the
+// dashboard refreshes. The test counts from the moment an admin starts it (start_generator_ab), so
+// testing done before launch, even the same day, stays out.
 export default function GeneratorAb({ loadedAt }) {
   const [state, setState] = useState({ data: null, error: null });
   const [range, setRange] = useState({ from: "", to: "" });
+  const [starts, setStarts] = useState(0);
+  const [starting, setStarting] = useState(false);
   const latest = useRef(0);
 
   useEffect(() => {
@@ -171,7 +181,17 @@ export default function GeneratorAb({ loadedAt }) {
             : { data: normalize(result.data), error: null }
         );
       });
-  }, [range, loadedAt]);
+  }, [range, loadedAt, starts]);
+
+  const start = async () => {
+    const restart = Boolean(state.data?.startedAt);
+    if (restart && !window.confirm("Restart the count? Everything before now drops out of the results.")) return;
+    setStarting(true);
+    const { error: startError } = await supabase.rpc("start_generator_ab");
+    setStarting(false);
+    if (startError) setState((current) => ({ ...current, error: startError.message || "Request failed" }));
+    else setStarts((n) => n + 1);
+  };
 
   useEffect(
     () => () => {
@@ -190,11 +210,16 @@ export default function GeneratorAb({ loadedAt }) {
       title="Generator A/B"
       sub={
         data?.from
-          ? `${data.from} to ${data.to} · ${data.days} UTC days · admins and ?gen= QA visits left out`
+          ? `${!range.from && data.startedAt ? `Since ${fmtDateTime(data.startedAt)}` : `From ${data.from}`} to ${data.to} · admins and ?gen= QA visits left out`
           : "Admins and ?gen= QA visits left out"
       }
       aside={
         <div className="dash-ab-range">
+          {data && (
+            <button type="button" className="dash-legend-item is-on" onClick={start} disabled={starting}>
+              {data.startedAt ? "Restart the count" : "Start the test now"}
+            </button>
+          )}
           <label>
             From
             <input type="date" value={range.from} max={range.to || undefined} onChange={setDate("from")} />
@@ -212,6 +237,12 @@ export default function GeneratorAb({ loadedAt }) {
       }
     >
       {error && <Empty>Couldn't load the A/B numbers ({error}).</Empty>}
+      {data && !data.startedAt && (
+        <p className="dash-note dash-ab-unstarted">
+          Not started: these numbers include anything logged before launch. Press <b>Start the test now</b> once
+          the jug is live.
+        </p>
+      )}
       {!data ? (
         !error && <Empty>Counting…</Empty>
       ) : empty ? (
